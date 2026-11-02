@@ -4,7 +4,7 @@ import * as T from './vendor/three.module.js';
 // Instanced quads keep the transparent image assets inexpensive on phones.
 export function createSeasonalEffects({ world, scene, camera, uniforms, random }) {
   const loader = new T.TextureLoader();
-  const resources = { loaded: 0, expected: 4, failed: [] };
+  const resources = { loaded: 0, expected: 3, failed: [] };
   const weather = new T.Group();
   weather.name = 'Seasonal falling petals, leaves and snow';
   world.add(weather);
@@ -12,7 +12,6 @@ export function createSeasonalEffects({ world, scene, camera, uniforms, random }
     { name: 'petal', season: 0, count: 40, size: .14, fall: .18 },
     { name: 'summer-leaf', season: 1, count: 26, size: .17, fall: .24 },
     { name: 'maple-leaf', season: 2, count: 32, size: .18, fall: .22 },
-    { name: 'snowflake', season: 3, count: 62, size: .10, fall: .15 },
   ];
   const weatherVertex = `
     attribute vec4 aRoot, aMotion;
@@ -87,12 +86,12 @@ export function createSeasonalEffects({ world, scene, camera, uniforms, random }
     weather.add(mesh);
   }
 
-  // Small winter flurries and ice dust complement the readable crystal sprites.
-  const dustCount = 250;
+  // Winter uses only round snow grains, never decorative crystal sprites.
+  const dustCount = 1450;
   const dustPositions = new Float32Array(dustCount * 3);
   const dustSeed = new Float32Array(dustCount);
   for (let i = 0; i < dustCount; i++) {
-    dustPositions.set([(random() - .5) * 10.8, random() * 3, (random() - .5) * 10.8], i * 3);
+    dustPositions.set([(random() - .5) * 10.8, random() * 4, (random() - .5) * 10.8], i * 3);
     dustSeed[i] = random();
   }
   const dustGeometry = new T.BufferGeometry();
@@ -102,23 +101,23 @@ export function createSeasonalEffects({ world, scene, camera, uniforms, random }
     uniforms,
     transparent: true, depthWrite: false,
     vertexShader: `
-      uniform float uTime, uCycle;
+      uniform float uTime, uCycle, uPixelRatio;
       attribute float aSeed;
       varying float vFade;
       void main() {
         vec3 p = position;
-        p.y = mod(p.y - uTime * (.15 + aSeed * .24) + 1000., 3.);
+        p.y = mod(p.y - uTime * (.22 + aSeed * .30) + 1000., 4.);
         p.x += sin(uTime * .6 + aSeed * 100.) * .4;
         p.z += cos(uTime * .4 + aSeed * 30.) * .3;
         float a = mod(atan(p.z, p.x) + 6.28318530718, 6.28318530718) / 6.28318530718;
         float s = mod(floor(uCycle - a) + 4., 4.);
         vFade = step(2.5, s) * (1. - smoothstep(4.8, 5.4, length(p.xz))) * smoothstep(0., .3, p.y);
         vec4 mv = modelViewMatrix * vec4(p, 1.);
-        gl_PointSize = clamp((12. + aSeed * 16.) / -mv.z, .8, 3.);
+        gl_PointSize = clamp((13. + aSeed * 16.) / -mv.z, 1.0, 3.0)*uPixelRatio;
         gl_Position = projectionMatrix * mv;
       }
     `,
-    fragmentShader: `varying float vFade;void main(){float d=length(gl_PointCoord-.5)*2.;if(d>1.)discard;gl_FragColor=vec4(.83,.91,1.,vFade*(1.-d*d)*.36);}`,
+    fragmentShader: `varying float vFade;void main(){float d=length(gl_PointCoord-.5)*2.;if(d>1.)discard;gl_FragColor=vec4(.83,.91,1.,vFade*(1.-d*d)*.57);}`,
   }));
   dust.frustumCulled = false;
   dust.name = 'Winter snow dust';
@@ -162,7 +161,7 @@ export function createSeasonalEffects({ world, scene, camera, uniforms, random }
 
   const meteorGeometry = new T.InstancedBufferGeometry().copy(new T.PlaneGeometry(1, 1));
   const meteorSpecs = new Float32Array([
-    -.25, .92, 6.0, 29.0,
+    -.25, .92, .35, 29.0,
     .80, .85, 19.0, 41.0,
   ]);
   meteorGeometry.setAttribute('aMeteor', new T.InstancedBufferAttribute(meteorSpecs, 4));
