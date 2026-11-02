@@ -1,0 +1,12 @@
+Generation mode: built-in ImageGen. Reference: supplied video frame at approximately 14.5 seconds. This image is a visual target, not a screenshot of the interactive implementation.
+
+Use case: stylized-concept
+Asset type: visual target render for a 3D reconstruction project based on the user's video.
+Input image: reference only, a video frame shown inside a phone screen. Reconstruct ONLY the artwork inside the video; discard all phone UI and black bars.
+Primary request: Match the reference artwork composition extremely closely: a thin flat circular disk floating in a black starry cosmos, viewed obliquely from above so it appears elliptical. A small black central circular hub with two delicate concentric brass rings. A single very slender golden clock hand extends from this hub towards the back-right rim, with a pale wheat-ear shaped pointed end. The top of the disk is a dense realistic miniature grass meadow, with a sharp radial seasonal sweep turning one region from living rich green grass to golden autumn grass to soft blue-white snow. EXACTLY TWO very small cats, one ivory-white and one black, playing together near the front-right part of the meadow. Tiny windblown snow particles around the disk. Thin black disk edge with evenly spaced tiny pale rim markers. Wispy faint blue nebula crosses the background. Main disk fills 75 percent of image width and is fully visible. Landscape 16:9.
+Style: beautiful detailed physically rendered Blender/Cycles miniature scene, tactile fine grass, subtle shadows and directional light. Maintain the simple restrained original composition. No trees, buildings, rocks, extra cats, text, labels, UI, phone, watermark, fantasy castle, decorative machinery. This is a close visual reconstruction, not a redesign.
+
+
+Additional asset: starfield.png
+Tool: built-in ImageGen.
+Prompt: A landscape 16:9 near-black outer space background with a subtle smoky dusty Milky Way band running diagonally from lower left to upper right. Fine distant stars, muted cobalt blue, slate blue and silver dust. Center-lower foreground mostly black. No planet, disk, grass, cats, sun, text or interface. Restrained exposure for a lit miniature in the foreground.
