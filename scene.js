@@ -1,4 +1,5 @@
 import * as T from './vendor/three.module.js';
+import { createSeasonalEffects } from './effects.js';
 
 const canvas=document.querySelector('#scene');
 let renderer;
@@ -71,11 +72,7 @@ world.add(group);return {group,body,head,legs,tail};}
 const cats=[cat(0xf1e4bb),cat(0x161a20)];cats.forEach(c=>c.group.scale.setScalar(.84));
 function moveCats(t){cats.forEach((c,i)=>{const p=t*.50+i*Math.PI;const x=.8+Math.cos(p)*.48,z=2.30+Math.sin(p)*.35;const dx=-Math.sin(p)*.48,dz=Math.cos(p)*.35;c.group.position.set(x,.08+Math.max(0,Math.sin(t*3+i))* .035,z);c.group.rotation.y=Math.atan2(dx,dz);c.legs.forEach((l,k)=>l.rotation.x=Math.sin(t*6+k*Math.PI+i)*.48);c.tail.rotation.z=Math.sin(t*1.8+i)*.24;c.head.rotation.y=Math.sin(t*.7+i)*.35;c.body.rotation.z=Math.sin(t*3+i)*.04;uniforms[i?'uCatB':'uCatA'].value.set(x,z);});}
 
-// Snowflakes and pollen share a deterministic particle field.
-const particleCount=6500,pp=new Float32Array(particleCount*3),pr=new Float32Array(particleCount);
-for(let i=0;i<particleCount;i++){pp.set([(rnd()-.5)*12,rnd()*4,(rnd()-.5)*11],i*3);pr[i]=rnd();}
-const pg=new T.BufferGeometry();pg.setAttribute('position',new T.BufferAttribute(pp,3));pg.setAttribute('random',new T.BufferAttribute(pr,1));
-const particles=new T.Points(pg,new T.ShaderMaterial({uniforms,transparent:true,depthWrite:false,vertexShader:`uniform float uTime,uCycle;attribute float random;varying float vAlpha,vSeason;${seasonsGLSL}void main(){vec3 p=position;p.y=mod(p.y-uTime*(.12+random*.22)+40.,4.);p.x+=sin(uTime*.25+random*60.)*.6;p.z+=cos(uTime*.3+random*20.)*.35;vSeason=state(p.xz);vAlpha=(1.-smoothstep(4.8,6.,length(p.xz)))*(vSeason>2.5?.7:(vSeason>1.5?.34:.07));vec4 mv=modelViewMatrix*vec4(p,1.);gl_PointSize=(10.+random*18.)/-mv.z;gl_Position=projectionMatrix*mv;}`,fragmentShader:`varying float vAlpha,vSeason;void main(){float d=length(gl_PointCoord-.5)*2.;if(d>1.)discard;vec3 c=vSeason>2.5?vec3(.81,.88,1.):vec3(1.,.83,.45);gl_FragColor=vec4(c,vAlpha*(1.-d*d));}`}));particles.frustumCulled=false;world.add(particles);
+const effects=createSeasonalEffects({world,scene,camera,uniforms,random:rnd});
 
 const starsPos=new Float32Array(2600*3),starsColor=new Float32Array(2600*3);for(let i=0;i<2600;i++){let a=rnd()*TAU,y=rnd()*2-1,r=32;starsPos.set([Math.cos(a)*Math.sqrt(1-y*y)*r,y*r,Math.sin(a)*Math.sqrt(1-y*y)*r],i*3);const b=.15+rnd()*.6;starsColor.set([b*.8,b*.9,b],i*3);}const sg=new T.BufferGeometry();sg.setAttribute('position',new T.BufferAttribute(starsPos,3));sg.setAttribute('color',new T.BufferAttribute(starsColor,3));scene.add(new T.Points(sg,new T.PointsMaterial({size:.025,vertexColors:true,transparent:true,opacity:.75,depthWrite:false})));
 const nebulaCanvas=document.createElement('canvas');nebulaCanvas.width=1024;nebulaCanvas.height=512;const ctx=nebulaCanvas.getContext('2d');
@@ -95,7 +92,7 @@ timeline.oninput=()=>{cycle=+timeline.value;};document.querySelector('#speed').o
 document.querySelector('#reset').onclick=()=>{azimuth=0;elevation=.63;distance=13.5;view();};document.querySelector('#full').onclick=()=>{if(document.fullscreenElement)document.exitFullscreen();else document.documentElement.requestFullscreen?.();};
 addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if(e.code==='Space'){e.preventDefault();toggle();}if(e.key.toLowerCase()==='h')document.body.classList.toggle('clean');if('1234'.includes(e.key)&&e.key.length===1)cycle=Number(e.key)+.001;});
 if(new URLSearchParams(location.search).has('clean'))document.body.classList.add('clean');
-function animate(now){requestAnimationFrame(animate);const dt=Math.min((now-last)/1000,.05);last=now;if(playing){elapsed+=dt*speed;cycle+=dt*speed/10;}if(document.body.classList.contains('art-mode')||document.hidden)return;uniforms.uTime.value=elapsed;uniforms.uCycle.value=cycle;hand.rotation.y=-(cycle%1)*TAU;moveCats(elapsed);timeline.value=((cycle%4)+4)%4;const current=((Math.floor(cycle)-(cycle%1>.5?0:1))%4+4)%4;document.querySelector('#time').textContent=names[current];document.querySelectorAll('[data-season]').forEach((b,i)=>b.setAttribute('aria-pressed',String(i===current)));renderer.render(scene,camera);}
+function animate(now){requestAnimationFrame(animate);const dt=Math.min((now-last)/1000,.05);last=now;if(playing){elapsed+=dt*speed;cycle+=dt*speed/10;}if(document.body.classList.contains('art-mode')||document.hidden)return;uniforms.uTime.value=elapsed;uniforms.uCycle.value=cycle;hand.rotation.y=-(cycle%1)*TAU;moveCats(elapsed);effects.update(elapsed);timeline.value=((cycle%4)+4)%4;const current=((Math.floor(cycle)-(cycle%1>.5?0:1))%4+4)%4;document.querySelector('#time').textContent=names[current];document.querySelectorAll('[data-season]').forEach((b,i)=>b.setAttribute('aria-pressed',String(i===current)));renderer.render(scene,camera);}
 requestAnimationFrame(animate);
 // Read-only scene diagnostics for visual verification and downstream editing.
-window.seasonDial={scene,camera,renderer,get cycle(){return cycle},set cycle(v){cycle=v},get playing(){return playing},set playing(v){if(playing!==v)toggle();}};
+window.seasonDial={scene,camera,renderer,effects,get cycle(){return cycle},set cycle(v){cycle=v},get playing(){return playing},set playing(v){if(playing!==v)toggle();}};

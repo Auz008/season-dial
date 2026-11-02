@@ -7,7 +7,10 @@ A contemplative miniature meadow suspended among the stars. A golden wheat hand 
 - Real-time, rotatable 3D scene with 155,000 wind-animated grass blades.
 - Spring, summer, autumn and winter, revealed by a radial sweep.
 - Procedural ivory and black cats with walking, head and tail animation.
-- Snow, pollen, a brass-trimmed hub and a delicate wheat hand.
+- Spring cherry petals, fresh summer leaves, red-orange autumn maple leaves, and winter crystal snowflakes with fine snow dust.
+- Sparse, small, translucent falling particles follow the seasonal regions of the dial and tumble gently as they descend. The meadow and the cats remain the focus.
+- A restrained living sky: softly twinkling stars, rare shooting stars, very slow nebula movement, and faint star formations that reveal and dissolve.
+- A brass-trimmed hub and a delicate wheat hand.
 - Quiet controls that disappear after a few seconds of inactivity.
 - A separate **Artwork** view displays the generated reference image exactly. **Live 3D** returns to the interactive reconstruction. The artwork is a still image; it is not presented as a real-time render.
 
@@ -36,6 +39,8 @@ This repository includes a GitHub Actions workflow for GitHub Pages. In reposito
 ## Files
 
 - `scene.js`: 3D geometry, grass shaders, cats and animation.
+- `effects.js`: GPU-instanced seasonal weather, animated stars, meteors and star formations.
+- `assets/`: four generated transparent particle textures and their complete prompts in `assets/PROMPTS.md`.
 - `interface.js`: viewing modes and quiet interface behavior.
 - `index.html`: English-only accessible controls.
 - `starfield.png`: generated deep-space background texture.
