@@ -1,6 +1,6 @@
 # Seasonal particle assets
 
-Generated with the built-in ImageGen tool with transparent_background=true. The images are consumed directly by the real-time particle renderer in effects.js.
+Generated with the built-in ImageGen tool with transparent_background=true. Original full-resolution images are preserved in source/. The root PNG files are optimized 320-pixel runtime copies. The images are consumed directly by the real-time particle renderer in effects.js.
 
 ## petal.png
 

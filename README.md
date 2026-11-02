@@ -40,10 +40,10 @@ This repository includes a GitHub Actions workflow for GitHub Pages. In reposito
 
 - `scene.js`: 3D geometry, grass shaders, cats and animation.
 - `effects.js`: GPU-instanced seasonal weather, animated stars, meteors and star formations.
-- `assets/`: four generated transparent particle textures and their complete prompts in `assets/PROMPTS.md`.
+- `assets/`: four optimized transparent particle textures, original high-resolution versions in `assets/source/`, and their complete prompts in `assets/PROMPTS.md`.
 - `interface.js`: viewing modes and quiet interface behavior.
 - `index.html`: English-only accessible controls.
-- `starfield.png`: generated deep-space background texture.
+- `starfield.png`: original generated deep-space texture; `starfield-bg.jpg` is its optimized runtime version.
 - `reference-render.png`: generated artwork used as a visual target and in Artwork mode.
 - `image-prompt.txt`: prompt used with the built-in ImageGen tool.
 - `start.py`: loopback-only local development server.

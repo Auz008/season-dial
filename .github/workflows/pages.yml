@@ -22,7 +22,7 @@ jobs:
       - name: Prepare static site
         run: |
           mkdir -p _site/vendor _site/assets
-          cp index.html scene.js effects.js interface.js reference-render.png starfield.png _site/
+          cp index.html scene.js effects.js interface.js reference-render.png starfield-bg.jpg _site/
           cp assets/*.png _site/assets/
           cp vendor/three.module.js vendor/THREE-LICENSE.txt _site/vendor/
           touch _site/.nojekyll

@@ -9,7 +9,7 @@ renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.setClearColor(0x020508);renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;
 renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.18;
 const scene=new T.Scene(),camera=new T.PerspectiveCamera(35,1,.1,100);
-new T.TextureLoader().load('./starfield.png',texture=>{texture.colorSpace=T.SRGBColorSpace;scene.background=texture;scene.backgroundIntensity=.55;nebula.visible=false;fitBackground();});
+new T.TextureLoader().load('./starfield-bg.jpg',texture=>{texture.colorSpace=T.SRGBColorSpace;scene.background=texture;scene.backgroundIntensity=.55;nebula.visible=false;fitBackground();});
 const world=new T.Group();scene.add(world);
 scene.add(new T.HemisphereLight(0xc8d8ed,0x242219,2));
 const sun=new T.DirectionalLight(0xffecc3,3.1);sun.position.set(-4,8,-2);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-6,right:6,top:6,bottom:-6,near:.1,far:25});sun.shadow.bias=-.0005;scene.add(sun);

@@ -11,8 +11,8 @@
 </head>
 <body>
 <canvas id="scene" aria-label="A seasonal meadow dial floating in the stars, with two cats and a golden wheat hand"></canvas>
-<img id="artwork" src="./reference-render.png" alt="Season Dial: a generated artwork of a floating autumn, green and snow meadow with two cats">
-<dialog id="reference-dialog"><button id="close-reference" style="float:right" aria-label="Close artwork">Close &times;</button><img src="./reference-render.png" alt="The generated visual reference for this project"><p>ARTWORK REFERENCE</p></dialog>
+<img id="artwork" src="./reference-render.png" loading="lazy" alt="Season Dial: a generated artwork of a floating autumn, green and snow meadow with two cats">
+<dialog id="reference-dialog"><button id="close-reference" style="float:right" aria-label="Close artwork">Close &times;</button><img src="./reference-render.png" loading="lazy" alt="The generated visual reference for this project"><p>ARTWORK REFERENCE</p></dialog>
 <footer aria-label="Scene controls">
 <button id="play" class="live-only" aria-label="Pause">Ⅱ</button>
 <div id="seasons" class="live-only"><button data-season="0" aria-label="Spring" data-short="Sp">Spring</button><button data-season="1" aria-label="Summer" data-short="Su">Summer</button><button data-season="2" aria-label="Autumn" data-short="Au">Autumn</button><button data-season="3" aria-label="Winter" data-short="Wi">Winter</button></div>
@@ -22,5 +22,5 @@
 <span class="divider"></span><button id="mode" aria-label="Switch to artwork">Artwork</button><button id="reference" class="optional" aria-label="Open reference image">↗</button><button id="full" aria-label="Fullscreen">⛶</button>
 </footer>
 <div id="error" role="status"></div>
-<script src="./interface.js"></script><script type="module" src="./scene.js?v=seasonal-effects-quiet-1"></script>
+<script src="./interface.js"></script><script type="module" src="./scene.js?v=seasonal-effects-quiet-2"></script>
 </body></html>
