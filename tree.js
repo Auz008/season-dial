@@ -156,6 +156,35 @@ export function createSeasonalTree(world, random) {
   const star = new T.Mesh(new T.ExtrudeGeometry(starShape, { depth: .025, bevelEnabled: false }), lightMaterial);
   star.position.set(0, 2.56, 0);
   winter.add(star);
+  // Small striped candy canes and wrapped gifts belong only to winter.
+  const candyWhite=material(0xf6f0e5,winterMaterials,{roughness:.35});
+  const candyRed=material(0xb92e3d,winterMaterials,{roughness:.35});
+  const candyCurve=new T.CatmullRomCurve3([new T.Vector3(0,0,0),new T.Vector3(0,.20,0),new T.Vector3(0,.33,0),new T.Vector3(.025,.39,0),new T.Vector3(.085,.405,0),new T.Vector3(.135,.37,0),new T.Vector3(.14,.32,0)]);
+  for(let i=0;i<6;i++){
+    const cane=new T.Group();const y=.65+(i%4)*.34,a=i*2.39996;
+    const r=.99*(1-(y-.5)/2.35);
+    cane.position.set(Math.cos(a)*r,y,Math.sin(a)*r);cane.rotation.y=-a;cane.rotation.z=(i%2?-.12:.12);
+    cane.add(new T.Mesh(new T.TubeGeometry(candyCurve,36,.016,7,false),candyWhite));
+    for(let j=0;j<6;j++){
+      const points=[];for(let k=0;k<5;k++)points.push(candyCurve.getPoint((j+.16+k*.095)/6));
+      cane.add(new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(points),5,.0168,7,false),candyRed));
+    }
+    winter.add(cane);
+  }
+  const ribbonMaterial=material(0xe6d2a0,winterMaterials,{metalness:.35,roughness:.4});
+  const giftColors=[0xad4652,0x4e8b7d,0xc19a5a,0x716082];
+  for(let i=0;i<4;i++){
+    const wrap=material(giftColors[i],winterMaterials,{roughness:.55});
+    const present=new T.Group();
+    const positions=[[-.72,.83],[.76,.65],[-1.02,.03],[.26,1.04]];
+    present.position.set(positions[i][0],.045,positions[i][1]);present.rotation.y=i*.43;
+    const width=.24+i%2*.055,height=.21+(i%3)*.035,depth=.23;
+    const box=new T.Mesh(new T.BoxGeometry(width,height,depth),wrap);box.position.y=height/2;box.castShadow=true;present.add(box);
+    const lid=new T.Mesh(new T.BoxGeometry(width+.025,.035,depth+.025),wrap);lid.position.y=height+.012;present.add(lid);
+    for(const [w,h,d] of [[.033,height+.05,depth+.03],[width+.03,height+.05,.033]]){const band=new T.Mesh(new T.BoxGeometry(w,h,d),ribbonMaterial);band.position.y=height/2+.006;present.add(band);}
+    for(const side of [-1,1]){const bow=new T.Mesh(new T.TorusGeometry(.043,.010,6,16),ribbonMaterial);bow.position.set(side*.039,height+.052,0);bow.rotation.x=Math.PI/2;bow.rotation.y=side*.38;bow.scale.set(1.05,.70,1);present.add(bow);}
+    winter.add(present);
+  }
   const leafColor = new T.Color(), baseColor = new T.Color();
   const springColor = new T.Color(0x81b749), summerColor = new T.Color(0x357537), autumnColor = new T.Color(0xba7932);
   let lastSeasonMix = -1;

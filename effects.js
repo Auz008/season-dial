@@ -161,8 +161,8 @@ export function createSeasonalEffects({ world, scene, camera, uniforms, random }
 
   const meteorGeometry = new T.InstancedBufferGeometry().copy(new T.PlaneGeometry(1, 1));
   const meteorSpecs = new Float32Array([
-    -.25, .92, .35, 29.0,
-    .80, .85, 19.0, 41.0,
+    -.18, .88, .40, 15.0,
+    .86, .78, 10.0, 23.0,
   ]);
   meteorGeometry.setAttribute('aMeteor', new T.InstancedBufferAttribute(meteorSpecs, 4));
   meteorGeometry.instanceCount = 2;
@@ -170,14 +170,14 @@ export function createSeasonalEffects({ world, scene, camera, uniforms, random }
     uniforms: skyUniforms, transparent: true, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide,
     vertexShader: `${skyProjection}
       attribute vec4 aMeteor;varying vec2 vUv;varying float vFade;
-      void main(){float age=mod(uTime+aMeteor.z,aMeteor.w);float progress=age/1.55;
-      vFade=step(age,1.55)*sin(clamp(progress,0.,1.)*3.14159265);
+      void main(){float age=mod(uTime+aMeteor.z,aMeteor.w);float progress=age/1.8;
+      vFade=step(age,1.8)*sin(clamp(progress,0.,1.)*3.14159265);
       vec2 direction=normalize(vec2(-1.,-.55));
       vec2 head=aMeteor.xy+direction*age*.64;
-      float trail=(position.x+.5)*.40*min(age/.16,1.);
-      vec2 p=head-direction*trail+vec2(-direction.y,direction.x)*position.y*.008;
+      float trail=(position.x+.5)*.52*min(age/.16,1.);
+      vec2 p=head-direction*trail+vec2(-direction.y,direction.x)*position.y*.010;
       vUv=vec2(position.x+.5,position.y*2.);gl_Position=skyPosition(p,23.);}`,
-    fragmentShader: `varying vec2 vUv;varying float vFade;void main(){float core=exp(-vUv.y*vUv.y*8.);float tail=pow(1.-vUv.x,1.8);vec3 color=mix(vec3(.28,.52,1.),vec3(1.,.96,.80),pow(1.-vUv.x,8.));gl_FragColor=vec4(color,core*tail*vFade*.55);}`,
+    fragmentShader: `varying vec2 vUv;varying float vFade;void main(){float core=exp(-vUv.y*vUv.y*8.);float tail=pow(1.-vUv.x,1.8);vec3 color=mix(vec3(.28,.52,1.),vec3(1.,.96,.80),pow(1.-vUv.x,8.));gl_FragColor=vec4(color,core*tail*vFade*.82);}`,
   }));
   meteors.frustumCulled = false;
   meteors.name = 'Intermittent shooting stars';

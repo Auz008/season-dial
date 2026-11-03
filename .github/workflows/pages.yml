@@ -22,7 +22,7 @@ jobs:
       - name: Prepare static site
         run: |
           mkdir -p _site/vendor _site/assets _site/gift
-          cp index.html scene.js effects.js tree.js meadow.js wallpaper.js interface.js manifest.webmanifest icon.png reference-render.png starfield-bg.jpg _site/
+          cp index.html scene.js effects.js tree.js cat-motion.js meadow.js wallpaper.js interface.js manifest.webmanifest icon.png reference-render.png starfield-bg.jpg _site/
           cp assets/*.png _site/assets/
           cp gift/* _site/gift/
           cp vendor/three.module.js vendor/THREE-LICENSE.txt _site/vendor/

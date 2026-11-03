@@ -4,6 +4,10 @@ export function installWallpaper(api) {
   const dialog = document.querySelector('#gift-dialog');
   document.querySelector('#gift').onclick = () => dialog.showModal();
   document.querySelector('#gift-close').onclick = () => dialog.close();
+  const actions=document.querySelector('#actions-dialog');
+  document.querySelector('#companion-actions').onclick=()=>{dialog.close();actions.showModal();};
+  document.querySelector('#actions-close').onclick=()=>actions.close();
+  document.querySelectorAll('[data-cat-action]').forEach(button=>button.onclick=()=>{actions.close();api.previewAction(button.dataset.catAction);});
   document.querySelector('#wallpaper-view').onclick = async () => {
     dialog.close();
     document.body.classList.add('wallpaper');
@@ -61,13 +65,13 @@ export function installWallpaper(api) {
       try {
         for(const [profile,width,height] of [['desktop',1920,1248],['ipad-portrait',1248,1812]]) {
           await api.prepareCapture(width,height);
-          for (let frame = 0; frame < 960; frame++) {
+          for (let frame = 0; frame < 1152; frame++) {
             const time = frame / 24;
-            api.renderAt(time, 4 + time / 10);
+            api.renderAt(time, 4 + time / 12);
             const blob = await new Promise(resolve => api.renderer.domElement.toBlob(resolve, 'image/jpeg', .91));
             const response = await fetch(`/capture/frame/${profile}/${String(frame).padStart(4, '0')}.jpg`, { method: 'POST', body: blob });
             if (!response.ok) throw new Error(`Frame ${frame} could not be saved`);
-            if (frame % 24 === 0) render.textContent = `Rendering ${profile}: ${Math.floor(frame / 24)} / 40 s`;
+            if (frame % 24 === 0) render.textContent = `Rendering ${profile}: ${Math.floor(frame / 24)} / 48 s`;
           }
         }
         render.textContent = 'Film frames ready';

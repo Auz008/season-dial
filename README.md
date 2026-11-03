@@ -6,13 +6,13 @@ A contemplative miniature meadow suspended among the stars. A golden wheat hand 
 
 - Real-time, rotatable 3D scene with 115,000 wind-animated grass blades.
 - Spring, summer, autumn and winter, revealed by a radial sweep.
-- Procedural ivory and black cats with walking, head and tail animation.
+- Procedural ivory and black cats with blended companion actions, blinking, breathing and flexible tails.
 - Spring cherry petals, fresh summer leaves, red-orange autumn maple leaves, and a fuller winter fall of fine round snow grains.
 - Sparse, small, translucent falling particles follow the seasonal regions of the dial and tumble gently as they descend. The meadow and the cats remain the focus.
 - A restrained living sky: softly twinkling stars, rare shooting stars, very slow nebula movement, and faint star formations that reveal and dissolve.
 - A small central tree: spring blossoms, lush summer greens and white dandelions, autumn apples, and a snow-tipped Christmas crown with warm lights in winter.
-- A white pearl border, softly luminous cats, occasional staggered jumps (once every 20 seconds per cat), and a delicate wheat hand.
-- A distraction-free wallpaper mode and an iPad gift pack: 40-second H.264 films plus four MacBook Air stills and eight iPad Pro stills, plus landscape and portrait films.
+- A white pearl border, softly luminous cats, a 48-second companion sequence with nuzzling, hugging, rolling, stretching, paw play, hopping and resting, and a delicate wheat hand.
+- A distraction-free wallpaper mode and an iPad gift pack: 48-second H.264 films plus four MacBook Air stills and eight iPad Pro stills, plus landscape and portrait films.
 - Quiet controls that disappear after a few seconds of inactivity.
 - A separate **Artwork** view displays the generated reference image exactly. **Live 3D** returns to the interactive reconstruction. The artwork is a still image; it is not presented as a real-time render.
 
@@ -41,7 +41,7 @@ This repository includes a GitHub Actions workflow for GitHub Pages. In reposito
 ## Files
 
 - `scene.js`: 3D geometry, grass shaders, glowing cats and occasional jump animation.
-- `tree.js`: the seasonal tree, apples, Christmas ornaments and warm lights.
+- `tree.js`: the seasonal tree, apples, Christmas ornaments, candy canes, wrapped presents and warm lights.
 - `meadow.js`: spring wildflowers and summer dandelion seed heads.
 - `wallpaper.js`: wallpaper presentation and image export; a loopback-only development switch is used for deterministic film capture.
 - `gift/`: the rendered film, twelve device-sized wallpaper images and gift instructions.

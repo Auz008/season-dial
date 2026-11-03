@@ -1,8 +1,9 @@
 import * as T from './vendor/three.module.js';
-import { createSeasonalEffects } from './effects.js?v=gift-1';
-import { createSeasonalTree } from './tree.js?v=flowers-1';
+import { createSeasonalEffects } from './effects.js?v=companions-2';
+import { createSeasonalTree } from './tree.js?v=companions-2';
 import { createMeadowGarden } from './meadow.js';
-import { installWallpaper } from './wallpaper.js';
+import { installWallpaper } from './wallpaper.js?v=companions-2';
+import { animateCatPair } from './cat-motion.js';
 
 const canvas=document.querySelector('#scene');
 let renderer;
@@ -69,35 +70,19 @@ hand.traverse(o=>{if(o.isMesh)o.castShadow=true;});
 function cat(color){const group=new T.Group(),body=new T.Group();group.add(body);const mat=new T.MeshStandardMaterial({color,roughness:.84,emissive:color===0x161a20?0x3c668a:0xffdca4,emissiveIntensity:color===0x161a20?.18:.18}),earMat=new T.MeshStandardMaterial({color:color===0x161a20?0x342c32:0xd0b29f,roughness:1});
 function ell(parent,pos,scale,material=mat){const m=new T.Mesh(new T.SphereGeometry(1,16,12),material);m.position.set(...pos);m.scale.set(...scale);m.castShadow=true;parent.add(m);return m;}
 ell(body,[0,.24,0],[.14,.15,.29]);ell(body,[0,.27,.19],[.125,.15,.14]);
+const eyes=[],ears=[];
 const head=new T.Group();head.position.set(0,.39,.27);body.add(head);ell(head,[0,0,0],[.13,.12,.12]);ell(head,[0,-.035,.09],[.08,.055,.055]);
-for(const x of [-.082,.082]){const ear=new T.Mesh(new T.ConeGeometry(.062,.15,3),mat);ear.position.set(x,.105,-.015);ear.rotation.z=-Math.sign(x)*.15;head.add(ear);const inner=new T.Mesh(new T.ConeGeometry(.035,.09,3),earMat);inner.position.set(x,.115,.006);head.add(inner);const eye=ell(head,[x*.68,.015,.103],[.012,.018,.009],new T.MeshStandardMaterial({color:color===0x161a20?0xb0bd78:0x5e7863}));}
+for(const x of [-.082,.082]){const ear=new T.Mesh(new T.ConeGeometry(.062,.15,3),mat);ear.position.set(x,.105,-.015);ear.rotation.z=-Math.sign(x)*.15;head.add(ear);ears.push(ear);const inner=new T.Mesh(new T.ConeGeometry(.035,.09,3),earMat);inner.position.set(x,.115,.006);head.add(inner);const eye=ell(head,[x*.68,.015,.103],[.012,.018,.009],new T.MeshStandardMaterial({color:color===0x161a20?0xb0bd78:0x5e7863}));eyes.push(eye);}
 const legs=[];for(const x of [-.09,.09])for(const z of [-.18,.18]){let leg=new T.Group();leg.position.set(x,.23,z);body.add(leg);ell(leg,[0,-.08,0],[.044,.11,.045]);ell(leg,[0,-.17,.015],[.05,.035,.068]);legs.push(leg);}
 const tail=new T.Group();tail.position.set(0,.30,-.22);body.add(tail);const curve=new T.CatmullRomCurve3([new T.Vector3(0,0,0),new T.Vector3(.03,.08,-.18),new T.Vector3(.06,.21,-.34),new T.Vector3(.02,.29,-.38)]);const tm=new T.Mesh(new T.TubeGeometry(curve,20,.024,7,false),mat);tm.castShadow=true;tail.add(tm);
 const glowMaterial=new T.ShaderMaterial({uniforms:{uColor:{value:new T.Color(color===0x161a20?0x85b6e0:0xffe6ba)}},side:T.BackSide,transparent:true,depthWrite:false,blending:T.AdditiveBlending,vertexShader:`varying vec3 vN,vV;void main(){vec4 mv=modelViewMatrix*vec4(position,1.);vN=normalize(normalMatrix*normal);vV=normalize(-mv.xyz);gl_Position=projectionMatrix*mv;}`,fragmentShader:`uniform vec3 uColor;varying vec3 vN,vV;void main(){float rim=pow(1.-abs(dot(normalize(vN),normalize(vV))),2.);gl_FragColor=vec4(uColor,rim*.32);}`});
 const meshes=[];body.traverse(o=>{if(o.isMesh)meshes.push(o);});for(const m of meshes){const halo=new T.Mesh(m.geometry,glowMaterial);halo.position.copy(m.position);halo.rotation.copy(m.rotation);halo.scale.copy(m.scale).multiplyScalar(1.065);m.parent.add(halo);}
 const glowCanvas=document.createElement('canvas');glowCanvas.width=64;glowCanvas.height=64;const glowContext=glowCanvas.getContext('2d');const gradient=glowContext.createRadialGradient(32,32,1,32,32,32);gradient.addColorStop(0,color===0x161a20?'rgba(130,190,255,.34)':'rgba(255,225,170,.34)');gradient.addColorStop(.45,color===0x161a20?'rgba(110,170,255,.09)':'rgba(255,210,140,.09)');gradient.addColorStop(1,'rgba(0,0,0,0)');glowContext.fillStyle=gradient;glowContext.fillRect(0,0,64,64);const aura=new T.Sprite(new T.SpriteMaterial({map:new T.CanvasTexture(glowCanvas),transparent:true,opacity:.65,depthWrite:false,blending:T.AdditiveBlending}));aura.position.y=.27;aura.scale.set(.95,.95,1);group.add(aura);
 const light=new T.PointLight(color===0x161a20?0x86b8ec:0xffd89a,.15,1.0,2);light.position.y=.22;group.add(light);
-world.add(group);return {group,body,head,legs,tail};}
+for(const child of body.children)child.position.y-=.24;body.position.y=.24;
+world.add(group);return {group,body,head,legs,tail,eyes,ears,tailGeometry:tm.geometry,tailRest:new Float32Array(tm.geometry.attributes.position.array)};}
 const cats=[cat(0xf1e4bb),cat(0x161a20)];cats.forEach(c=>c.group.scale.setScalar(.84));
-function moveCats(t){cats.forEach((c,i)=>{
-  const p=t*TAU/20+i*Math.PI;
-  const x=.8+Math.cos(p)*.58,z=2.30+Math.sin(p)*.42;
-  const dx=-Math.sin(p)*.58,dz=Math.cos(p)*.42;
-  const phase=(t+i*8)%20;
-  const jumpProgress=(phase-6.4)/1.05;
-  const airborne=jumpProgress>0&&jumpProgress<1;
-  const jump=airborne?Math.sin(jumpProgress*Math.PI)*.57:0;
-  const crouch=phase>6.15&&phase<6.4?Math.sin((phase-6.15)/.25*Math.PI)*.045:0;
-  c.group.position.set(x,.08+jump-crouch,z);
-  c.group.rotation.y=Math.atan2(dx,dz);
-  c.body.scale.set(1,1-crouch*1.3,1+crouch*.8);
-  c.body.rotation.x=airborne?Math.sin(jumpProgress*TAU)*.15:0;
-  c.legs.forEach((leg,k)=>leg.rotation.x=airborne?(k<2?-.55:.55):Math.sin(t*TAU*2+k*Math.PI+i)*.40);
-  c.tail.rotation.z=Math.sin(t*TAU/4+i)*.22;
-  c.head.rotation.y=Math.sin(t*TAU/10+i)*.30;
-  c.body.rotation.z=Math.sin(t*TAU/2+i)*.025;
-  uniforms[i?'uCatB':'uCatA'].value.set(x,z);
-});}
+function moveCats(t){animateCatPair(cats,t,uniforms);}
 const seasonalTree=createSeasonalTree(world,rnd);
 const meadowGarden=createMeadowGarden(world,rnd);
 
@@ -108,10 +93,11 @@ const nebulaCanvas=document.createElement('canvas');nebulaCanvas.width=1024;nebu
 for(let i=0;i<130;i++){const x=rnd()*1024,y=260+Math.sin(x/170)*35+(rnd()-.5)*95,r=25+rnd()*100;let g=ctx.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,`rgba(75,94,126,${.025+rnd()*.045})`);g.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=g;ctx.fillRect(x-r,y-r,r*2,r*2);}
 const nebula=new T.Mesh(new T.PlaneGeometry(60,30),new T.MeshBasicMaterial({map:new T.CanvasTexture(nebulaCanvas),transparent:true,opacity:1.1,depthWrite:false,blending:T.AdditiveBlending}));nebula.position.set(0,2,-17);nebula.rotation.z=.14;scene.add(nebula);
 
+let capturing=false;
 let azimuth=0,elevation=.63,distance=14.5,playing=true,speed=1,cycle=4,elapsed=0,last=performance.now(),pointer=null;
 function view(){camera.position.set(Math.sin(azimuth)*Math.cos(elevation)*distance,Math.sin(elevation)*distance,Math.cos(azimuth)*Math.cos(elevation)*distance);camera.lookAt(0,-.65,0);}
 function fitBackground(){const texture=scene.background;if(!texture?.image)return;const aspect=camera.aspect;const imageAspect=texture.image.width/texture.image.height;texture.repeat.set(Math.min(1,aspect/imageAspect),Math.min(1,imageAspect/aspect));texture.offset.set((1-texture.repeat.x)/2,(1-texture.repeat.y)/2);texture.needsUpdate=true;}
-function resize(){renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.fov=camera.aspect<1.2?T.MathUtils.radToDeg(2*Math.atan(5.8/(distance*camera.aspect))):36;camera.updateProjectionMatrix();view();fitBackground();}addEventListener('resize',resize);resize();
+function resize(){if(capturing)return;renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.fov=camera.aspect<1.2?T.MathUtils.radToDeg(2*Math.atan(5.8/(distance*camera.aspect))):36;camera.updateProjectionMatrix();view();fitBackground();}addEventListener('resize',resize);resize();
 canvas.addEventListener('pointerdown',e=>{pointer={x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId);});canvas.addEventListener('pointermove',e=>{if(!pointer)return;azimuth-=(e.clientX-pointer.x)*.006;elevation=T.MathUtils.clamp(elevation+(e.clientY-pointer.y)*.004,.18,1.45);pointer={x:e.clientX,y:e.clientY};view();});canvas.addEventListener('pointerup',()=>pointer=null);canvas.addEventListener('pointercancel',()=>pointer=null);canvas.addEventListener('wheel',e=>{e.preventDefault();distance=T.MathUtils.clamp(distance+e.deltaY*.015,11,28);view();},{passive:false});
 const play=document.querySelector('#play'),timeline=document.querySelector('#timeline'),names=['Spring','Summer','Autumn','Winter'];
 document.querySelector('#reference').onclick=()=>document.querySelector('#reference-dialog').showModal();document.querySelector('#close-reference').onclick=()=>document.querySelector('#reference-dialog').close();
@@ -121,7 +107,6 @@ timeline.oninput=()=>{cycle=+timeline.value;};document.querySelector('#speed').o
 document.querySelector('#reset').onclick=()=>{azimuth=0;elevation=.63;distance=14.5;view();};document.querySelector('#full').onclick=()=>{if(document.fullscreenElement)document.exitFullscreen();else document.documentElement.requestFullscreen?.();};
 addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if(e.code==='Space'){e.preventDefault();toggle();}if(e.key.toLowerCase()==='h')document.body.classList.toggle('clean');if('1234'.includes(e.key)&&e.key.length===1)cycle=Number(e.key);});
 if(new URLSearchParams(location.search).has('clean'))document.body.classList.add('clean');
-let capturing=false;
 function renderFrame(time,seasonCycle){
   uniforms.uTime.value=time;uniforms.uCycle.value=seasonCycle;uniforms.uPixelRatio.value=renderer.getPixelRatio();
   hand.rotation.y=-(seasonCycle%1)*TAU;
@@ -148,6 +133,7 @@ const api={scene,camera,renderer,effects,
     await Promise.all([new Promise((resolve,reject)=>{const started=performance.now();const check=()=>{if(effects.resources.loaded===effects.resources.expected)return resolve();if(effects.resources.failed.length||performance.now()-started>15000)return reject(new Error('The scene textures could not load. Please try again.'));setTimeout(check,100);};check();}),new Promise(resolve=>setTimeout(resolve,300))]);
   },
   renderAt:renderFrame,
+  previewAction(name){const times={wander:0,nuzzle:8.5,hug:13,roll:19,stretch:24,play:28,hop:32.9,curl:39};elapsed=times[name]??0;if(!playing)toggle();last=performance.now();renderFrame(elapsed,cycle);},
   endCapture(){capturing=false;renderer.setPixelRatio(Math.min(devicePixelRatio,2));resize();last=performance.now();},
 };
 window.seasonDial=api;
