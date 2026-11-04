@@ -1,7 +1,7 @@
 import * as T from './vendor/three.module.js';
 
 // Spring is a tiny wildflower garden; summer is a green dandelion meadow.
-export function createMeadowGarden(world, random) {
+export function createMeadowGarden(world, random, windTime, snowman) {
   const group=new T.Group();world.add(group);
   const dummy=new T.Object3D();
   const springMaterials=[],summerMaterials=[];
@@ -9,17 +9,35 @@ export function createMeadowGarden(world, random) {
   const springStem=mat(0x42742e,springMaterials);
   const petalMaterial=mat(0xffffff,springMaterials);
   const centerMaterial=mat(0xe1b850,springMaterials);
-  const flowerCount=100;
+  if(windTime){
+    for(const material of springMaterials){
+      material.onBeforeCompile=shader=>{
+        shader.uniforms.flowerTime=windTime;
+        shader.vertexShader='uniform float flowerTime;\n'+shader.vertexShader;
+        // Bend in meadow coordinates so petals and stems share the same wind.
+        shader.vertexShader=shader.vertexShader.replace('#include <project_vertex>',
+          T.ShaderChunk.project_vertex.replace('mvPosition = modelViewMatrix * mvPosition;', `
+            vec2 root = instanceMatrix[3].xz;
+            float gust = sin(flowerTime * .92 + dot(root, vec2(.8, .65)));
+            float height = max(mvPosition.y, 0.0);
+            mvPosition.xz += vec2(gust, .65 * sin(flowerTime * .70 + root.y))
+              * height * height * .29;
+            mvPosition = modelViewMatrix * mvPosition;
+          `));
+      };
+    }
+  }
+  const flowerCount=142;
   const stems=new T.InstancedMesh(new T.CylinderGeometry(1,1,1,5),springStem,flowerCount);
   const petals=new T.InstancedMesh(new T.SphereGeometry(1,6,4),petalMaterial,flowerCount*6);
   const centers=new T.InstancedMesh(new T.SphereGeometry(.015,6,4),centerMaterial,flowerCount);
-  const colors=[0xf0a9c1,0xd983b1,0xa786c9,0x80a8d4,0xe8be4f,0xd77a82,0xf4eedb];
+  const colors=[0xff75a5,0xf0528f,0xac69ef,0x5899ee,0xffc934,0xff6858,0xffe8c0];
   function position(){let x,z;do{const a=random()*Math.PI*2,r=1.25+Math.sqrt(random())*3.45;x=Math.cos(a)*r;z=Math.sin(a)*r;}while(Math.hypot(x-.8,z-2.3)<.85);return [x,z];}
   for(let i=0;i<flowerCount;i++){
-    const [x,z]=position(),height=.20+random()*.10;
+    const [x,z]=position(),height=.24+random()*.105;
     dummy.position.set(x,height/2,z);dummy.rotation.set(0,0,0);dummy.scale.set(.006,height,.006);dummy.updateMatrix();stems.setMatrixAt(i,dummy.matrix);
     for(let k=0;k<6;k++){
-      const a=k/6*Math.PI*2;dummy.position.set(x+Math.cos(a)*.029,height,z+Math.sin(a)*.029);dummy.rotation.set(0,-a+Math.PI/2,0);dummy.scale.set(.023,.007,.036);dummy.updateMatrix();petals.setMatrixAt(i*6+k,dummy.matrix);petals.setColorAt(i*6+k,new T.Color(colors[i%colors.length]));
+      const a=k/6*Math.PI*2;dummy.position.set(x+Math.cos(a)*.035,height,z+Math.sin(a)*.035);dummy.rotation.set(0,-a+Math.PI/2,0);dummy.scale.set(.028,.008,.043);dummy.updateMatrix();petals.setMatrixAt(i*6+k,dummy.matrix);petals.setColorAt(i*6+k,new T.Color(colors[i%colors.length]));
     }
     dummy.position.set(x,height+.006,z);dummy.scale.setScalar(1);dummy.updateMatrix();centers.setMatrixAt(i,dummy.matrix);
   }
@@ -43,7 +61,118 @@ export function createMeadowGarden(world, random) {
   const tipsGeometry=new T.BufferGeometry();tipsGeometry.setAttribute('position',new T.Float32BufferAttribute(tips,3));
   const puffLines=new T.LineSegments(strandGeometry,strandsMaterial),puffTips=new T.Points(tipsGeometry,tipsMaterial);
   group.add(puffStems,puffLines,puffTips);
-  return {update(time,weights){
+  // A few loose stands of wheat, leaving the bench and cats clear.
+  const wheatStem=new T.CylinderGeometry(.003,.0045,1,5);
+  const wheatGrain=new T.SphereGeometry(1,8,6);
+  const wheatPatches=[
+    [-3.25,.65],[-1.85,2.47],[-.68,3.57],[2.62,2.35],
+    [3.45,.73],[2.48,-2.53],[.50,-3.55],[-1.72,-2.70],
+  ].map(([x,z],index)=>{
+    const patch=new T.Group();
+    patch.position.set(x,0,z);
+    patch.visible=false;
+    group.add(patch);
+    const stemPaint=new T.MeshStandardMaterial({color:0xac7332,transparent:true,roughness:.9});
+    const grainPaint=new T.MeshStandardMaterial({
+      color:0xe4b86a,emissive:0x80501f,emissiveIntensity:.15,transparent:true,roughness:.88,
+    });
+    const stems=new T.InstancedMesh(wheatStem,stemPaint,9);
+    const grains=new T.InstancedMesh(wheatGrain,grainPaint,72);
+    patch.add(stems,grains);
+    for(let i=0;i<9;i++){
+      const angle=i*2.39996+index;
+      const radius=.086*Math.sqrt(i);
+      const x=Math.cos(angle)*radius, z=Math.sin(angle)*radius;
+      const height=.34+.14*((i*.618+index*.37)%1);
+      dummy.position.set(x,height/2,z);
+      dummy.rotation.set(0,angle,0);
+      dummy.scale.set(1,height,1);
+      dummy.updateMatrix();
+      stems.setMatrixAt(i,dummy.matrix);
+      for(let row=0;row<4;row++){
+        for(const side of [-1,1]){
+          const taper=1-row*.12;
+          const offset=side*.011*taper;
+          dummy.position.set(x+Math.cos(angle)*offset,height-.025+row*.020,z-Math.sin(angle)*offset);
+          dummy.rotation.set(0,angle,-side*.45);
+          dummy.scale.set(.012*taper,.023*taper,.009);
+          dummy.updateMatrix();
+          grains.setMatrixAt(i*8+row*2+(side+1)/2,dummy.matrix);
+        }
+      }
+    }
+    const angle=T.MathUtils.euclideanModulo(Math.atan2(z,x)/(Math.PI*2),1);
+    return {patch,angle,stemPaint,grainPaint};
+  });
+  const box=new T.BoxGeometry(1,1,1);
+  const bowGeometry=new T.SphereGeometry(1,8,6);
+  const snowmanGifts=Array.from({length:6},(_,index)=>{
+    const angle=index*Math.PI/3+.17;
+    const radius=.28+(index%2)*.025;
+    return [Math.cos(angle)*radius,Math.sin(angle)*radius,.14+(index%3)*.028];
+  });
+  const giftColors=[0xb53d4d,0xe3ad45,0x397d58];
+  const winterGifts=[
+    [snowman.position.x,snowman.position.z,snowmanGifts],
+    [2.57,2.18,[[0,0,.25],[.23,.08,.17],[.13,-.21,.16]]],
+  ].map(([x,z,gifts])=>{
+    const cluster=new T.Group();
+    cluster.position.set(x,.058,z);
+    cluster.visible=false;
+    group.add(cluster);
+
+    const papers=giftColors.map(color=>new T.MeshStandardMaterial({
+      color,roughness:.82,transparent:true,
+    }));
+    const ribbon=new T.MeshStandardMaterial({color:0xdcb77b,roughness:.82,transparent:true});
+    const part=(parent,geometry,paint,x,y,z,width,height,depth)=>{
+      const mesh=new T.Mesh(geometry,paint);
+      mesh.position.set(x,y,z);
+      mesh.scale.set(width,height,depth);
+      parent.add(mesh);
+      return mesh;
+    };
+    gifts.forEach(([dx,dz,size],index)=>{
+      const gift=new T.Group();
+      gift.position.set(dx,0,dz);
+      gift.rotation.y=.35+index*.83;
+      cluster.add(gift);
+      const height=size*(index%2===0?.78:.94);
+      const paper=papers[index%papers.length];
+      part(gift,box,paper,0,height/2,0,size,height,size);
+      const tie=index%papers.length===1?papers[0]:ribbon;
+      part(gift,box,tie,0,height/2,0,size+.009,height+.009,size*.20);
+      part(gift,box,tie,0,height/2,0,size*.20,height+.009,size+.009);
+      for(const side of [-1,1]){
+        const loop=part(gift,bowGeometry,tie,side*.027,height+.020,0,.033,.012,.012);
+        loop.rotation.z=side*.40;
+      }
+    });
+    const angle=T.MathUtils.euclideanModulo(Math.atan2(z,x)/(Math.PI*2),1);
+    return {cluster,paints:[...papers,ribbon],angle};
+  });
+  return {update(time,weights,cycle){
+    for(const {cluster,paints,angle} of winterGifts){
+      const winter=T.MathUtils.euclideanModulo(cycle-angle,4);
+      const opacity=T.MathUtils.smoothstep(winter,3,3.10)*
+        (1-T.MathUtils.smoothstep(winter,3.90,4));
+      cluster.visible=opacity>.001;
+      if(!cluster.visible)continue;
+      for(const paint of paints){
+        paint.opacity=opacity;
+        paint.depthWrite=opacity>.95;
+      }
+    }
+    for(const {patch,angle,stemPaint,grainPaint} of wheatPatches){
+      const autumn=T.MathUtils.euclideanModulo(cycle-angle,4);
+      const opacity=T.MathUtils.smoothstep(autumn,2,2.16)*
+        (1-T.MathUtils.smoothstep(autumn,2.84,3));
+      patch.visible=opacity>.001;
+      if(!patch.visible)continue;
+      stemPaint.opacity=grainPaint.opacity=opacity;
+      stemPaint.depthWrite=grainPaint.depthWrite=opacity>.95;
+      patch.rotation.z=.06+.065*Math.sin(time*1.45+angle*8);
+    }
     for(const m of springMaterials){m.opacity=weights[0];m.depthWrite=weights[0]>.95;}
     for(const object of [stems,petals,centers])object.visible=weights[0]>.01;
     for(const m of summerMaterials){m.opacity=weights[1];m.depthWrite=weights[1]>.95;}

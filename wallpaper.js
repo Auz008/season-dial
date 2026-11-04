@@ -4,10 +4,6 @@ export function installWallpaper(api) {
   const dialog = document.querySelector('#gift-dialog');
   document.querySelector('#gift').onclick = () => dialog.showModal();
   document.querySelector('#gift-close').onclick = () => dialog.close();
-  const actions=document.querySelector('#actions-dialog');
-  document.querySelector('#companion-actions').onclick=()=>{dialog.close();actions.showModal();};
-  document.querySelector('#actions-close').onclick=()=>actions.close();
-  document.querySelectorAll('[data-cat-action]').forEach(button=>button.onclick=()=>{actions.close();api.previewAction(button.dataset.catAction);});
   document.querySelector('#wallpaper-view').onclick = async () => {
     dialog.close();
     document.body.classList.add('wallpaper');

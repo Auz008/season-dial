@@ -1,8 +1,197 @@
 import * as T from './vendor/three.module.js';
 
+// Miniature ornaments in camera space, with normal depth testing against the dial.
+function createWinterSleigh(sky) {
+  const team = new T.Group();
+  team.name = 'Winter sleigh and reindeer';
+  sky.add(team);
+
+  const materials = [];
+  function material(color) {
+    const result = new T.MeshBasicMaterial({ color, transparent: true, depthWrite: false });
+    materials.push(result);
+    return result;
+  }
+  const gold = material(0xffd188), cream = material(0xffedcb);
+  function crystal(color, rimColor) {
+    const result = new T.MeshStandardMaterial({
+      color, roughness: .25, transparent: true, depthWrite: false,
+      emissive: color, emissiveIntensity: .24,
+    });
+    result.onBeforeCompile = shader => {
+      shader.uniforms.crystalRim = { value: new T.Color(rimColor) };
+      shader.fragmentShader = 'uniform vec3 crystalRim;\n' + shader.fragmentShader;
+      shader.fragmentShader = shader.fragmentShader.replace('#include <opaque_fragment>', `
+        float rim = pow(1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0), 2.0);
+        float facet = .5 + .5 * sin(dot(normal, vec3(8.0, 15.0, 12.0)));
+        outgoingLight += crystalRim * (.16 + .72 * rim + .12 * facet);
+        diffuseColor.a *= .35 + .52 * rim + .13 * facet;
+        #include <opaque_fragment>
+      `);
+    };
+    materials.push(result);
+    return result;
+  }
+  const deer = crystal(0x90bccc, 0xffe2aa);
+  const scarlet = crystal(0xb6172d, 0xff594d);
+  const glass = crystal(0x96b7cf, 0xf9d19b);
+  const ivory = crystal(0xffe7cb, 0xffe5bd);
+  const sphere = new T.SphereGeometry(1, 12, 8);
+  function oval(parent, paint, x, y, sx, sy, z = 0) {
+    const mesh = new T.Mesh(sphere, paint);
+    mesh.position.set(x, y, z);
+    mesh.scale.set(sx, sy, .075);
+    parent.add(mesh);
+    return mesh;
+  }
+  function stroke(parent, paint, points, width, z = .06) {
+    const curve = new T.CatmullRomCurve3(points.map(([x,y]) => new T.Vector3(x,y,z)));
+    parent.add(new T.Mesh(new T.TubeGeometry(curve, 12, width, 5, false), paint));
+  }
+
+  const sleigh = new T.Group();
+  team.add(sleigh);
+  const shell = new T.Shape();
+  shell.moveTo(-1.24,.20);
+  shell.bezierCurveTo(-1.09,.22,-1.16,-.015,-.98,-.045);
+  shell.bezierCurveTo(-.76,-.085,-.52,-.04,-.39,.085);
+  shell.bezierCurveTo(-.38,-.09,-.53,-.16,-.74,-.17);
+  shell.lineTo(-1.02,-.17);
+  shell.bezierCurveTo(-1.18,-.16,-1.20,-.03,-1.24,.20);
+  const carriage = new T.Mesh(new T.ExtrudeGeometry(shell,{
+    depth:.12,bevelEnabled:true,bevelThickness:.011,bevelSize:.011,
+    bevelSegments:2,curveSegments:14,
+  }),glass);
+  carriage.position.z=-.09;
+  sleigh.add(carriage);
+
+  // A seated silhouette with a tapered cap, pale beard and forward-reaching arm.
+  oval(sleigh, scarlet, -.85,.105,.117,.145,-.04).rotation.z=-.19;
+  oval(sleigh, ivory, -.759,.252,.054,.063,.005);
+  stroke(sleigh, ivory, [[-.79,.247],[-.751,.202],[-.691,.194]], .027,.045);
+  stroke(sleigh, scarlet, [[-.707,.288],[-.754,.340],[-.816,.345],[-.843,.316]], .034,.018);
+  stroke(sleigh, ivory, [[-.803,.289],[-.747,.292],[-.708,.280]], .014,.038);
+  oval(sleigh, ivory, -.846,.306,.024,.024,.025);
+  stroke(sleigh, scarlet, [[-.836,.174],[-.760,.120],[-.650,.144]], .033,.043);
+  oval(sleigh, ivory, -.641,.148,.022,.022,.052);
+
+  for (const depth of [-.12,.115]) {
+    stroke(sleigh, gold, [[-1.27,-.223],[-1.11,-.26],[-.65,-.26],[-.43,-.21],[-.35,-.123],[-.38,-.083]], .013,depth);
+    stroke(sleigh, gold, [[-1.06,-.249],[-1.00,-.158]], .010,depth);
+    stroke(sleigh, gold, [[-.68,-.254],[-.63,-.160]], .010,depth);
+  }
+  stroke(sleigh, gold, [[-1.24,.20],[-1.11,.024],[-.93,-.051],[-.64,-.050],[-.39,.085]], .011,.052);
+  stroke(sleigh, gold, [[-.63,.145],[-.29,.09],[.28,.16],[1.04,.22]], .006,.066);
+
+  const reindeer = [.22, 1.03].map((x, index) => {
+    const body = new T.Group();
+    body.position.set(x, .11 + index * .07, 0);
+    team.add(body);
+    oval(body, deer, 0, 0, .238, .074);
+    oval(body, deer, -.142, -.017, .084, .072);
+    oval(body, deer, -.24, .053, .066, .026).rotation.z = -.55;
+    const neck = new T.Group();
+    neck.position.set(.147,.021,0);
+    body.add(neck);
+    oval(neck, deer, .029,.068,.052,.127).rotation.z = -.40;
+    const head = new T.Group();
+    head.position.set(.077,.152,0);
+    neck.add(head);
+    oval(head, deer, .019,0,.093,.050);
+    oval(head, glass, .074,-.021,.061,.029);
+    oval(head, cream, .118,-.021,.019,.017);
+    oval(head, glass, -.044,.043,.051,.018).rotation.z = -.5;
+    for (const depth of [-.04,.05]) {
+      stroke(head, gold, [[-.04,.03],[-.09,.125],[-.143,.235]], .008, depth);
+      stroke(head, gold, [[-.10,.113],[-.17,.148],[-.19,.198]], .008, depth);
+      stroke(head, gold, [[-.12,.17],[-.071,.205],[-.059,.25]], .008, depth);
+    }
+    const legs = [];
+    for (const depth of [-.055,.065]) for (const front of [false,true]) {
+      const leg = new T.Group();
+      leg.position.set(front ? .143 : -.155, -.045, depth);
+      body.add(leg);
+      const kneeX = front ? .043 : -.054;
+      stroke(leg, deer, [[0,0],[kneeX*.5,-.058],[kneeX,-.106]], .021, 0);
+      const knee = new T.Group();
+      knee.position.set(kneeX,-.106,0);
+      leg.add(knee);
+      stroke(knee, gold, [[0,0],[.032,-.042],[.063,-.082]], .012, 0);
+      legs.push({leg,knee,front,far:depth<0});
+    }
+    return { body, neck, head, legs, y: body.position.y };
+  });
+
+  const glowCanvas = document.createElement('canvas');
+  glowCanvas.width = glowCanvas.height = 64;
+  const context = glowCanvas.getContext('2d');
+  const halo = context.createRadialGradient(32,32,0,32,32,32);
+  halo.addColorStop(0, 'rgba(255,204,127,.7)');
+  halo.addColorStop(.43, 'rgba(255,180,99,.21)');
+  halo.addColorStop(1, 'rgba(255,164,86,0)');
+  context.fillStyle = halo;
+  context.fillRect(0,0,64,64);
+  const glow = new T.Sprite(new T.SpriteMaterial({
+    map: new T.CanvasTexture(glowCanvas), transparent: true,
+    depthWrite: false, blending: T.AdditiveBlending,
+  }));
+  glow.position.set(-.72,.11,-.21);
+  glow.scale.set(1.62,1.02,1);
+  team.add(glow);
+
+  const glints = Array.from({ length: 12 }, (_, i) => {
+    const mesh = oval(team, i % 3 === 0 ? cream : gold, 0, 0, .022, .022, -.02);
+    return mesh;
+  });
+  return {
+    update(time, progress, center, camera) {
+      team.visible = progress > 0 && progress < 1;
+      if (!team.visible) return;
+      const depth = 38;
+      const halfHeight = depth * Math.tan(T.MathUtils.degToRad(camera.fov / 2));
+      const halfWidth = halfHeight * camera.aspect;
+      const scale = halfHeight * .079;
+      const margin = 1.85 * scale;
+      const arc = progress * 2 - 1;
+      team.scale.setScalar(scale);
+      team.position.set(
+        T.MathUtils.lerp(-halfWidth-margin, halfWidth+margin, progress),
+        halfHeight * (center.y - .22 + .34 * arc * arc - .055 * arc),
+        -depth,
+      );
+      // Face along the tangent of the same arc that drives the translation.
+      const flightPitch = Math.atan2(halfHeight * (1.36 * arc - .11), 2 * (halfWidth + margin));
+      team.rotation.z = flightPitch;
+      const fade = T.MathUtils.smoothstep(progress, 0, .08)
+        * (1 - T.MathUtils.smoothstep(progress, .92, 1));
+      for (const paint of materials) paint.opacity = fade * .91;
+      glow.material.opacity = fade * .34;
+      sleigh.rotation.z = Math.sin(time * 4.4) * .018;
+      reindeer.forEach(({body, neck, head, legs, y}, i) => {
+        const beat = time * 6.8 + i * 1.05;
+        body.position.y = y + Math.sin(beat) * .026;
+        body.rotation.z = Math.sin(beat) * .044;
+        neck.rotation.z = flightPitch * .22 + Math.cos(beat) * .018;
+        head.rotation.z = flightPitch * .14;
+        for (const {leg,knee,front,far} of legs) {
+          const step = beat + (front ? .7 : 2.2) + (far ? .88 : 0);
+          leg.rotation.z = Math.sin(step) * .48 + (front ? .16 : -.19);
+          knee.rotation.z = .17 + (.5 + .5 * Math.cos(step)) * .57;
+        }
+      });
+      glints.forEach((glint, i) => {
+        const age = (time * .67 + i * .271) % 1;
+        glint.position.x = -1.24 - age * 1.08;
+        glint.position.y = -.02 - age * .24 + Math.sin(i * 9) * .11;
+        glint.scale.setScalar(.024 * Math.sin(Math.PI * age));
+      });
+    },
+  };
+}
+
 // All four falling materials share the dial's radial season calculation.
 // Instanced quads keep the transparent image assets inexpensive on phones.
-export function createSeasonalEffects({ world, scene, camera, uniforms, random }) {
+export function createSeasonalEffects({ world, scene, camera, uniforms, random, springStill = false, summerStill = false, winterStill = false }) {
   const loader = new T.TextureLoader();
   const resources = { loaded: 0, expected: 3, failed: [] };
   const weather = new T.Group();
@@ -87,7 +276,7 @@ export function createSeasonalEffects({ world, scene, camera, uniforms, random }
   }
 
   // Winter uses only round snow grains, never decorative crystal sprites.
-  const dustCount = 1450;
+  const dustCount = 2250;
   const dustPositions = new Float32Array(dustCount * 3);
   const dustSeed = new Float32Array(dustCount);
   for (let i = 0; i < dustCount; i++) {
@@ -113,15 +302,105 @@ export function createSeasonalEffects({ world, scene, camera, uniforms, random }
         float s = mod(floor(uCycle - a) + 4., 4.);
         vFade = step(2.5, s) * (1. - smoothstep(4.8, 5.4, length(p.xz))) * smoothstep(0., .3, p.y);
         vec4 mv = modelViewMatrix * vec4(p, 1.);
-        gl_PointSize = clamp((13. + aSeed * 16.) / -mv.z, 1.0, 3.0)*uPixelRatio;
+        gl_PointSize = clamp((16. + aSeed * 17.) / -mv.z, 1.0, 3.0)*uPixelRatio;
         gl_Position = projectionMatrix * mv;
       }
     `,
-    fragmentShader: `varying float vFade;void main(){float d=length(gl_PointCoord-.5)*2.;if(d>1.)discard;gl_FragColor=vec4(.83,.91,1.,vFade*(1.-d*d)*.57);}`,
+    fragmentShader: `varying float vFade;void main(){float d=length(gl_PointCoord-.5)*2.;if(d>1.)discard;gl_FragColor=vec4(.83,.91,1.,vFade*(1.-d*d)*.65);}`,
   }));
   dust.frustumCulled = false;
   dust.name = 'Winter snow dust';
   weather.add(dust);
+
+  // A narrow crest and a few droplets peel away from the moving season boundary.
+  const splashSeeds = [];
+  for (let i = 0; i < 184; i++) {
+    // Independent of the landscape seed, so the other weather keeps its layout.
+    const seed = i * 0.61803398875 % 1;
+    splashSeeds.push(1.02 + (i / 184) * 3.88, seed, (i * .75487766625) % 1);
+  }
+  const splashGeometry = new T.BufferGeometry();
+  splashGeometry.setAttribute('position', new T.Float32BufferAttribute(splashSeeds, 3));
+  const sweepDirection = { value: 1 };
+  const splash = new T.Points(splashGeometry, new T.ShaderMaterial({
+    uniforms: { ...uniforms, uSweepDirection: sweepDirection },
+    transparent: true, depthWrite: false, blending: T.AdditiveBlending,
+    vertexShader: `
+      uniform float uTime, uCycle, uPixelRatio, uSweepDirection;
+      varying float vAlpha;
+      varying vec3 vColor;
+      void main() {
+        float radius = position.x;
+        float seed = position.y;
+        float age = fract(uTime * (.85 + position.z * .65) + seed);
+        float season = mod(floor(uCycle + (uSweepDirection > 0. ? 0. : -1.)), 4.);
+        vec3 spring = vec3(.84, .93, .37);
+        vec3 summer = vec3(.29, .86, .54);
+        vec3 autumn = vec3(1., .58, .21);
+        vec3 winter = vec3(.64, .84, 1.);
+        vColor = season < .5 ? spring : season < 1.5 ? summer : season < 2.5 ? autumn : winter;
+        float crest = .5 + .5 * sin(radius * 8. - uTime * 4.);
+        float lift = sin(age * 3.14159265) * (.11 + .24 * crest * position.z);
+        float angle = fract(uCycle) * 6.2831853 - uSweepDirection * (.008 + age * (.055 + seed * .052));
+        vec3 point = vec3(cos(angle) * radius, .17 + lift, sin(angle) * radius);
+        vec4 viewPoint = modelViewMatrix * vec4(point, 1.);
+        gl_Position = projectionMatrix * viewPoint;
+        gl_PointSize = clamp((20. + 34. * seed) / -viewPoint.z, 1.25, 4.) * uPixelRatio;
+        vAlpha = smoothstep(0., .12, age) * (1. - smoothstep(.35, 1., age))
+          * (.30 + .38 * crest) * (1. - smoothstep(4.55, 4.92, radius));
+      }
+    `,
+    fragmentShader: `
+      varying float vAlpha;
+      varying vec3 vColor;
+      void main() {
+        float r = length(gl_PointCoord - .5) * 2.;
+        float foam = 1. - smoothstep(.15, 1., r);
+        gl_FragColor = vec4(mix(vColor, vec3(1.), foam * .30), foam * vAlpha);
+      }
+    `,
+  }));
+  splash.name = 'Season sweep droplets';
+  splash.frustumCulled = false;
+  const seasonStill = springStill || summerStill || winterStill;
+  splash.visible = !seasonStill;
+  world.add(splash);
+
+  const rainPositions = [], rainSeeds = [];
+  for (let i = 0; i < 180; i++) {
+    const angle = i * 2.399963;
+    const radius = 4.85 * Math.sqrt((i + .5) / 180);
+    const x = Math.cos(angle) * radius, z = Math.sin(angle) * radius;
+    rainPositions.push(x, 0, z, x, 1, z);
+    const seed = (i * .618034) % 1;
+    rainSeeds.push(seed, seed);
+  }
+  const rainGeometry = new T.BufferGeometry();
+  rainGeometry.setAttribute('position', new T.Float32BufferAttribute(rainPositions, 3));
+  rainGeometry.setAttribute('aSeed', new T.Float32BufferAttribute(rainSeeds, 1));
+  const rainStrength = { value: 0 };
+  const rain = new T.LineSegments(rainGeometry, new T.ShaderMaterial({
+    uniforms: { ...uniforms, uRainStrength: rainStrength },
+    transparent: true, depthWrite: false,
+    vertexShader: `
+      uniform float uTime, uCycle, uRainStrength;
+      attribute float aSeed;
+      varying float vAlpha;
+      void main() {
+        float angle = mod(atan(position.z, position.x) + 6.2831853, 6.2831853) / 6.2831853;
+        float summer = 1. - step(.5, abs(mod(floor(uCycle-angle),4.) - 1.));
+        float height = fract(aSeed - uTime * (.75 + .40*aSeed)) * 2.8;
+        vec3 p = vec3(position.x - .035*height, height + .022, position.z);
+        p += vec3(-.010, .075 + .045*aSeed, .005) * position.y;
+        vAlpha = summer * uRainStrength * smoothstep(0., .12, height)
+          * (1. - smoothstep(2.3, 2.8, height)) * (.28 - .17*position.y);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(p,1.);
+      }`,
+    fragmentShader: `varying float vAlpha;
+      void main() { gl_FragColor = vec4(.66,.82,.96,vAlpha); }`,
+  }));
+  rain.frustumCulled = false;
+  world.add(rain);
 
   // A camera-relative deep sky stays behind the meadow at every orbit angle.
   const sky = new T.Group();
@@ -135,12 +414,13 @@ export function createSeasonalEffects({ world, scene, camera, uniforms, random }
       return projectionMatrix * vec4(p.x * depth * uTanFov * uAspect, p.y * depth * uTanFov, -depth, 1.);
     }
   `;
-  const starCount = 230;
+  const starCount = springStill ? 480 : 230;
   const starPositions = new Float32Array(starCount * 3);
   const starSeeds = new Float32Array(starCount * 3);
   for (let i = 0; i < starCount; i++) {
     starPositions.set([(random() - .5) * 2.2, (random() - .5) * 2.2, 24 + random() * 12], i * 3);
-    starSeeds.set([random() * 100, .7 + random() * 1.6, random()], i * 3);
+    const phase = random() * 100, size = .7 + random() * 1.6, tint = random();
+    starSeeds.set([phase, !springStill && i < 12 ? size + 2.4 : size, tint], i * 3);
   }
   const starGeometry = new T.BufferGeometry();
   starGeometry.setAttribute('position', new T.BufferAttribute(starPositions, 3));
@@ -149,10 +429,10 @@ export function createSeasonalEffects({ world, scene, camera, uniforms, random }
     uniforms: skyUniforms, transparent: true, depthWrite: false, blending: T.AdditiveBlending,
     vertexShader: `${skyProjection}
       attribute vec3 aSeed;varying float vAlpha;varying vec3 vColor;
-      void main(){vec2 p=position.xy;p.x=mod(p.x+uTime*(.0007+aSeed.z*.0005)+1.1,2.2)-1.1;
-      p.y+=sin(uTime*.025+aSeed.x)*.006;
+      void main(){vec2 p=position.xy;
+      ${seasonStill ? '' : 'p.x=mod(p.x+uTime*(.0007+aSeed.z*.0005)+1.1,2.2)-1.1; p.y+=sin(uTime*.025+aSeed.x)*.006;'}
       float twinkle=pow(.5+.5*sin(uTime*(.55+aSeed.z)+aSeed.x),3.);
-      vAlpha=.07+twinkle*.32;vColor=mix(vec3(.60,.77,1.),vec3(1.,.87,.66),aSeed.z);
+      vAlpha=${springStill ? ".12+twinkle*.64" : "mix(.08+twinkle*.16,.12+twinkle*.83,step(3.,aSeed.y))"};vColor=mix(vec3(.60,.77,1.),vec3(1.,.87,.66),aSeed.z);
       gl_PointSize=aSeed.y*(.8+twinkle*.35);gl_Position=skyPosition(p,position.z);}`,
     fragmentShader: `varying float vAlpha;varying vec3 vColor;void main(){float d=length(gl_PointCoord-.5)*2.;if(d>1.)discard;gl_FragColor=vec4(vColor,pow(1.-d,1.5)*vAlpha);}`,
   }));
@@ -160,23 +440,25 @@ export function createSeasonalEffects({ world, scene, camera, uniforms, random }
   sky.add(stars);
 
   const meteorGeometry = new T.InstancedBufferGeometry().copy(new T.PlaneGeometry(1, 1));
-  const meteorSpecs = new Float32Array([
-    -.18, .88, .40, 15.0,
-    .86, .78, 10.0, 23.0,
+  const meteorSpecs = new Float32Array(springStill ? [1.32, .18, 4., 5.] : summerStill ? [1.42, .26, 0., 2.4] : [
+    1.50, .32, 1.1, 3.,
   ]);
   meteorGeometry.setAttribute('aMeteor', new T.InstancedBufferAttribute(meteorSpecs, 4));
-  meteorGeometry.instanceCount = 2;
+  meteorGeometry.instanceCount = meteorSpecs.length / 4;
+  const meteorCenter = new T.Vector3();
+  const winterSleigh = createWinterSleigh(sky);
   const meteors = new T.Mesh(meteorGeometry, new T.ShaderMaterial({
-    uniforms: skyUniforms, transparent: true, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide,
+    uniforms: { ...skyUniforms, uMeteorCenter: { value: meteorCenter } }, transparent: true, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide,
     vertexShader: `${skyProjection}
-      attribute vec4 aMeteor;varying vec2 vUv;varying float vFade;
-      void main(){float age=mod(uTime+aMeteor.z,aMeteor.w);float progress=age/1.8;
-      vFade=step(age,1.8)*sin(clamp(progress,0.,1.)*3.14159265);
-      vec2 direction=normalize(vec2(-1.,-.55));
-      vec2 head=aMeteor.xy+direction*age*.64;
-      float trail=(position.x+.5)*.52*min(age/.16,1.);
+      uniform vec3 uMeteorCenter;attribute vec4 aMeteor;varying vec2 vUv;varying float vFade;
+      void main(){float age=mod(uTime+aMeteor.z,aMeteor.w);float duration=${summerStill ? "1.95" : "2.65"};float progress=age/duration;
+      vFade=step(age,duration)*sin(clamp(progress,0.,1.)*3.14159265);
+      vec2 travel=-2.*aMeteor.xy;
+      vec2 direction=normalize(travel);
+      vec2 head=uMeteorCenter.xy+aMeteor.xy+travel*progress;
+      float trail=(position.x+.5)*.68*min(age/.16,1.);
       vec2 p=head-direction*trail+vec2(-direction.y,direction.x)*position.y*.010;
-      vUv=vec2(position.x+.5,position.y*2.);gl_Position=skyPosition(p,23.);}`,
+      vUv=vec2(position.x+.5,position.y*2.);gl_Position=skyPosition(p,38.);}`,
     fragmentShader: `varying vec2 vUv;varying float vFade;void main(){float core=exp(-vUv.y*vUv.y*8.);float tail=pow(1.-vUv.x,1.8);vec3 color=mix(vec3(.28,.52,1.),vec3(1.,.96,.80),pow(1.-vUv.x,8.));gl_FragColor=vec4(color,core*tail*vFade*.82);}`,
   }));
   meteors.frustumCulled = false;
@@ -227,11 +509,25 @@ export function createSeasonalEffects({ world, scene, camera, uniforms, random }
   }
   return {
     resources,
-    update(time) {
+    update(time, direction = 1) {
+      sweepDirection.value = direction;
+      camera.updateMatrixWorld();
+      meteorCenter.set(0, .24, 0).project(camera);
+      if (seasonStill) meteorCenter.y += .57;
+      const season = T.MathUtils.euclideanModulo(uniforms.uCycle.value, 4);
+      const shower = time % 54;
+      rainStrength.value = summerStill
+        ? .52 * T.MathUtils.smoothstep(shower, 12, 14) * (1 - T.MathUtils.smoothstep(shower, 20, 23))
+        : springStill ? 0 : T.MathUtils.smoothstep(season, 1, 1.16)
+          * (1 - T.MathUtils.smoothstep(season, 1.5, 2));
+      rain.visible = rainStrength.value > 0;
+      // Cross as spring grows from one third to two thirds of the dial.
+      const flightProgress = springStill ? -1 : 3 * season - 1;
+      winterSleigh.update(time, flightProgress, meteorCenter, camera);
       skyUniforms.uAspect.value = camera.aspect;
       skyUniforms.uTanFov.value = Math.tan(T.MathUtils.degToRad(camera.fov / 2));
       const texture = scene.background;
-      if (texture?.isTexture) {
+      if (texture?.isTexture && !seasonStill) {
         texture.offset.x = (1 - texture.repeat.x) / 2 + Math.sin(time * .015) * .009;
         texture.offset.y = (1 - texture.repeat.y) / 2 + Math.cos(time * .011) * .006;
       }

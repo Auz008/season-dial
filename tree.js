@@ -15,9 +15,22 @@ export function createSeasonalTree(world, random) {
     list.push(m);
     return m;
   };
-  const bark = material(0x65432c, summerMaterials);
-  const pineBark = material(0x493c2b, winterMaterials);
-  const leafMaterial = material(0xffffff, summerMaterials, { roughness: .75 });
+  const bark = material(0x65432c, summerMaterials, { alphaHash: true, transparent: false });
+  const pineBark = material(0x493c2b, winterMaterials, { alphaHash: true, transparent: false });
+  const leafMaterial = material(0xffffff, summerMaterials, { roughness: .75, alphaHash: true, transparent: false });
+  const leafWind={value:0};
+  leafMaterial.onBeforeCompile=shader=>{
+    shader.uniforms.leafWind=leafWind;
+    shader.vertexShader='uniform float leafWind;\n'+shader.vertexShader;
+    shader.vertexShader=shader.vertexShader.replace('#include <project_vertex>',
+      T.ShaderChunk.project_vertex.replace('mvPosition = modelViewMatrix * mvPosition;', `
+        vec3 leaf = instanceMatrix[3].xyz;
+        float gust = sin(leafWind * 1.55 + leaf.x * 2.4 + leaf.z * 1.3);
+        float flutter = sin(leafWind * 3.2 + dot(leaf, vec3(13., 17., 11.)));
+        mvPosition.xyz += vec3(.033 * gust, .009 * flutter, .019 * gust);
+        mvPosition = modelViewMatrix * mvPosition;
+      `));
+  };
   function branch(parent, a, b, radius, mat) {
     const delta = new T.Vector3().subVectors(b, a);
     const mesh = new T.Mesh(new T.CylinderGeometry(radius * .60, radius, delta.length(), 7), mat);
@@ -83,51 +96,97 @@ export function createSeasonalTree(world, random) {
     const a = i * 2.39996;
     const fruit = new T.Group();
     fruit.position.set(Math.cos(a) * (.63 + (i % 3) * .07), 1.48 + (i % 5) * .17, Math.sin(a) * .70);
+    fruit.position.y += .1475;
     const ball = new T.Mesh(new T.SphereGeometry(.095, 14, 10), appleMaterial);
+    ball.position.y = -.1475;
     ball.scale.y = 1.05;
     ball.castShadow = true;
     fruit.add(ball);
     const stem = new T.Mesh(new T.CylinderGeometry(.009, .012, .075, 5), appleStem);
-    stem.position.y = .11;
+    stem.position.y = -.0375;
     stem.rotation.z = .18;
     fruit.add(stem);
     apples.add(fruit);
+    fruit.userData.growthDelay = (4 - i % 5) * .11;
   }
 
   branch(winter, new T.Vector3(0, 0, 0), new T.Vector3(0, 2.53, 0), .11, pineBark);
-  const pineMaterial = material(0x194a35, winterMaterials, { roughness: .95 });
-  const snowMaterial = material(0xe2edf2, winterMaterials, { roughness: 1 });
-  const sprayGeometry = new T.SphereGeometry(1, 12, 8);
-  const sprays = new T.InstancedMesh(sprayGeometry, pineMaterial, 500);
-  const snow = new T.InstancedMesh(sprayGeometry, snowMaterial, 230);
-  sprays.castShadow = true;
-  let sprayIndex = 0, snowIndex = 0;
-  for (let tier = 0; tier < 7; tier++) {
-    const y = .52 + tier * .29;
-    const radius = .96 * (1 - tier / 8.2);
-    const branches = 13 - tier;
-    for (let j = 0; j < branches; j++) {
-      const angle = j / branches * Math.PI * 2 + tier * .46;
-      for (let k = 0; k < 5; k++) {
-        const r = radius * (.25 + k * .16);
-        dummy.position.set(Math.cos(angle) * r, y + .07 - k * .028, Math.sin(angle) * r);
-        dummy.rotation.set(0, -angle + Math.PI / 2, (random() - .5) * .15);
-        dummy.scale.set(.105 + radius * .06, .075, .17 + radius * .14);
-        dummy.updateMatrix();
-        sprays.setMatrixAt(sprayIndex++, dummy.matrix);
-        if ((j + k + tier) % 2 === 0 && snowIndex < 230) {
-          dummy.position.y += .066;
-          dummy.scale.y = .024;
-          dummy.scale.x *= .60;
-          dummy.updateMatrix();
-          snow.setMatrixAt(snowIndex++, dummy.matrix);
+  const pineMaterial = material(0x194a35, winterMaterials, { roughness: .95, alphaHash: true, transparent: false });
+  const snowMaterial = material(0xe2edf2, winterMaterials, { roughness: 1, alphaHash: true, transparent: false });
+  const branchCount = 70;
+  const needles = new T.InstancedMesh(new T.ConeGeometry(1,1,3),pineMaterial,branchCount*7*8*4);
+  const twigs = new T.InstancedMesh(new T.CylinderGeometry(.48,1,1,5),pineBark,branchCount*7);
+  const frost = new T.InstancedMesh(new T.IcosahedronGeometry(1,1),snowMaterial,branchCount*7);
+  const up = new T.Vector3(0,1,0), delta = new T.Vector3();
+  const green = [new T.Color(0xb5c7a7),new T.Color(0xe3dfb4),new T.Color(0x7e9e90)];
+  let needleIndex=0, twigIndex=0, frostIndex=0;
+
+  function segment(mesh,index,start,end,width){
+    delta.subVectors(end,start);
+    dummy.position.copy(start).lerp(end,.5);
+    dummy.scale.set(width,delta.length(),width);
+    dummy.quaternion.setFromUnitVectors(up,delta.normalize());
+    dummy.updateMatrix();
+    mesh.setMatrixAt(index,dummy.matrix);
+  }
+  function shoot(start,end,width){
+    segment(twigs,twigIndex++,start,end,width);
+    const forward=end.clone().sub(start).normalize();
+    const lateral=new T.Vector3(-forward.z,0,forward.x).normalize();
+    const vertical=new T.Vector3().crossVectors(forward,lateral).normalize();
+    const base=new T.Vector3(), tip=new T.Vector3();
+    for(let row=0;row<8;row++){
+      const along=(row+.45)/8;
+      for(let n=0;n<4;n++){
+        const phase=n*Math.PI/2+row*.79;
+        const length=(.045+random()*.044)*(1-along*.42);
+        base.copy(start).lerp(end,along+(n-1.5)*.011);
+        tip.copy(base).addScaledVector(lateral,Math.cos(phase)*length)
+          .addScaledVector(vertical,Math.sin(phase)*length*.72)
+          .addScaledVector(forward,length*.51);
+        segment(needles,needleIndex,base,tip,.005+random()*.0025);
+        needles.setColorAt(needleIndex++,green[Math.floor(random()*green.length)]);
+      }
+    }
+    if(random()<.34){
+      dummy.position.copy(start).lerp(end,.35+random()*.40);
+      dummy.position.y+=.035;
+      dummy.rotation.set(0,Math.atan2(forward.x,forward.z),0);
+      dummy.scale.set(.025+random()*.032,.012+random()*.015,.035+random()*.055);
+      dummy.updateMatrix();
+      frost.setMatrixAt(frostIndex++,dummy.matrix);
+    }
+  }
+  for(let tier=0;tier<7;tier++){
+    const height=.52+tier*.29;
+    const radius=.96*(1-tier/8.2);
+    const count=13-tier;
+    for(let j=0;j<count;j++){
+      const angle=j/count*Math.PI*2+tier*.46;
+      const axis=new T.Vector3(Math.cos(angle),0,Math.sin(angle));
+      const across=new T.Vector3(-axis.z,0,axis.x);
+      const length=radius*(.91+random()*.18)+.09;
+      const start=new T.Vector3(0,height+(random()-.5)*.10,0);
+      const end=start.clone().addScaledVector(axis,length);
+      end.y-=.035+random()*.048;
+      shoot(start,end,.019*(1-tier*.09));
+      for(let k=0;k<3;k++){
+        for(const side of [-1,1]){
+          const base=start.clone().lerp(end,.33+k*.23+side*.033);
+          const tip=base.clone().addScaledVector(axis,length*(.23-k*.033))
+            .addScaledVector(across,side*length*(.24-k*.043));
+          tip.y+=.025+random()*.095;
+          shoot(base,tip,.008*(1-tier*.075));
         }
       }
     }
   }
-  sprays.count = sprayIndex;
-  snow.count = snowIndex;
-  winter.add(sprays, snow);
+  needles.count=needleIndex;
+  twigs.count=twigIndex;
+  frost.count=frostIndex;
+  needles.castShadow=true;
+  twigs.castShadow=true;
+  winter.add(twigs,needles,frost);
   const baubles = [material(0xba3e32, winterMaterials, { metalness: .45, roughness: .3 }), material(0xdac18b, winterMaterials, { metalness: .6, roughness: .3 })];
   for (let i = 0; i < 21; i++) {
     const a = i * 2.39996;
@@ -156,78 +215,167 @@ export function createSeasonalTree(world, random) {
   const star = new T.Mesh(new T.ExtrudeGeometry(starShape, { depth: .025, bevelEnabled: false }), lightMaterial);
   star.position.set(0, 2.56, 0);
   winter.add(star);
-  // Small striped candy canes and wrapped gifts belong only to winter.
+  // Small ornaments nest in the outer winter boughs.
   const candyWhite=material(0xf6f0e5,winterMaterials,{roughness:.35});
   const candyRed=material(0xb92e3d,winterMaterials,{roughness:.35});
   const candyCurve=new T.CatmullRomCurve3([new T.Vector3(0,0,0),new T.Vector3(0,.20,0),new T.Vector3(0,.33,0),new T.Vector3(.025,.39,0),new T.Vector3(.085,.405,0),new T.Vector3(.135,.37,0),new T.Vector3(.14,.32,0)]);
-  for(let i=0;i<6;i++){
-    const cane=new T.Group();const y=.65+(i%4)*.34,a=i*2.39996;
-    const r=.99*(1-(y-.5)/2.35);
-    cane.position.set(Math.cos(a)*r,y,Math.sin(a)*r);cane.rotation.y=-a;cane.rotation.z=(i%2?-.12:.12);
+  function nestOrnament(tier, branchIndex) {
+    const angle = branchIndex / (13 - tier) * Math.PI * 2 + tier * .46;
+    const radius = .96 * (1 - tier / 8.2) * .96 + .12;
+    const nest = new T.Group();
+    nest.position.set(Math.cos(angle)*radius,.52 + tier*.29 - .028,Math.sin(angle)*radius);
+    nest.rotation.y = Math.PI / 2 - angle;
+    winter.add(nest);
+    return nest;
+  }
+  const caneBranches = [[1,1],[2,3],[4,8],[5,1]];
+  for (const [tier, branchIndex] of caneBranches) {
+    const nest = nestOrnament(tier,branchIndex);
+    const cane = new T.Group();
+    cane.scale.setScalar(.60);
+    cane.position.set(-.065,-.085,.055);
+    cane.rotation.z=-.48;
+    nest.add(cane);
     cane.add(new T.Mesh(new T.TubeGeometry(candyCurve,36,.016,7,false),candyWhite));
     for(let j=0;j<6;j++){
       const points=[];for(let k=0;k<5;k++)points.push(candyCurve.getPoint((j+.16+k*.095)/6));
       cane.add(new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(points),5,.0168,7,false),candyRed));
     }
-    winter.add(cane);
   }
   const ribbonMaterial=material(0xe6d2a0,winterMaterials,{metalness:.35,roughness:.4});
+  const giftBranches = [[1,3],[2,9],[3,9],[4,0]];
   const giftColors=[0xad4652,0x4e8b7d,0xc19a5a,0x716082];
   for(let i=0;i<4;i++){
     const wrap=material(giftColors[i],winterMaterials,{roughness:.55});
     const present=new T.Group();
-    const positions=[[-.72,.83],[.76,.65],[-1.02,.03],[.26,1.04]];
-    present.position.set(positions[i][0],.045,positions[i][1]);present.rotation.y=i*.43;
     const width=.24+i%2*.055,height=.21+(i%3)*.035,depth=.23;
     const box=new T.Mesh(new T.BoxGeometry(width,height,depth),wrap);box.position.y=height/2;box.castShadow=true;present.add(box);
     const lid=new T.Mesh(new T.BoxGeometry(width+.025,.035,depth+.025),wrap);lid.position.y=height+.012;present.add(lid);
     for(const [w,h,d] of [[.033,height+.05,depth+.03],[width+.03,height+.05,.033]]){const band=new T.Mesh(new T.BoxGeometry(w,h,d),ribbonMaterial);band.position.y=height/2+.006;present.add(band);}
     for(const side of [-1,1]){const bow=new T.Mesh(new T.TorusGeometry(.043,.010,6,16),ribbonMaterial);bow.position.set(side*.039,height+.052,0);bow.rotation.x=Math.PI/2;bow.rotation.y=side*.38;bow.scale.set(1.05,.70,1);present.add(bow);}
-    winter.add(present);
+
+    const [tier, branchIndex] = giftBranches[i];
+    const nest = nestOrnament(tier,branchIndex);
+    present.scale.setScalar(.58);
+    present.position.set(0,-height*.28,.045);
+    present.rotation.set(.13,.22,-.13);
+    nest.add(present);
+  }
+
+  const candyMint=material(0x579f89,winterMaterials,{roughness:.45});
+  const sweetBody=new T.SphereGeometry(.059,12,8);
+  const sweetEnd=new T.ConeGeometry(.036,.055,5);
+  for(const [tier,branchIndex,paint] of [[1,5,candyRed],[3,2,candyMint],[4,5,candyRed]]){
+    const nest=nestOrnament(tier,branchIndex);
+    const sweet=new T.Group();
+    sweet.position.set(0,.022,.058);
+    sweet.rotation.z=.30;
+    nest.add(sweet);
+    sweet.add(new T.Mesh(sweetBody,paint));
+    for(const side of [-1,1]){
+      const end=new T.Mesh(sweetEnd,ribbonMaterial);
+      end.position.x=side*.070;
+      end.rotation.z=side*Math.PI/2;
+      sweet.add(end);
+    }
+  }
+
+  const charcoal=material(0x323843,winterMaterials);
+  const snowball=new T.SphereGeometry(1,12,8);
+  const miniCap=new T.CylinderGeometry(.037,.043,.026,12);
+  for(const [tier,branchIndex] of [[1,8],[3,4]]){
+    const nest=nestOrnament(tier,branchIndex);
+    function ball(paint,x,y,z,radius){
+      const mesh=new T.Mesh(snowball,paint);
+      mesh.position.set(x,y,z);
+      mesh.scale.setScalar(radius);
+      nest.add(mesh);
+    }
+    ball(candyWhite,0,-.022,.057,.059);
+    ball(candyWhite,0,.066,.066,.041);
+    const cap=new T.Mesh(miniCap,charcoal);
+    cap.position.set(0,.107,.066);
+    cap.rotation.z=.15;
+    nest.add(cap);
+    for(const side of [-1,1])ball(charcoal,side*.014,.073,.103,.006);
+    ball(candyRed,0,.060,.107,.009);
   }
   const leafColor = new T.Color(), baseColor = new T.Color();
   const springColor = new T.Color(0x81b749), summerColor = new T.Color(0x357537), autumnColor = new T.Color(0xba7932);
-  let lastSeasonMix = -1;
+  let lastSeasonMix = -1, lastPrevious = -1;
   function opacity(list, alpha) {
-    for (const m of list) { m.opacity = alpha; m.depthWrite = alpha > .96; }
+    for (const m of list) { m.opacity = alpha; m.depthWrite = m.alphaHash || alpha > .96; }
   }
   return {
     update(time, cycle) {
+      leafWind.value=time;
       const previous = ((Math.floor(cycle) - 1) % 4 + 4) % 4;
       const next = (previous + 1) % 4;
-      const changesShape = previous === 3 || next === 3;
-      const f = T.MathUtils.smoothstep(cycle % 1, changesShape ? .44 : .12, changesShape ? .56 : .88);
+      const f = T.MathUtils.smoothstep(cycle % 1, .06, .94);
       const weights = [0, 0, 0, 0];
       weights[previous] = 1 - f;
       weights[next] = f;
       const winterWeight = weights[3];
-      opacity(summerMaterials, 1 - winterWeight);
-      opacity(winterMaterials, winterWeight);
-      blossomMaterial.opacity=weights[0]*.95;blossomCenterMaterial.opacity=weights[0];blossoms.visible=blossomCenters.visible=weights[0]>.01;
-      summer.visible = winterWeight < .995;
-      winter.visible = winterWeight > .005;
-      apples.visible = weights[2] > .015;
-      appleMaterial.opacity = weights[2];
-      appleStem.opacity = weights[2];
-      const scale = .55 + weights[2] * .45;
-      apples.scale.setScalar(scale);
-      root.rotation.z = Math.sin(time * Math.PI / 10) * .012;
+      const thawing = previous === 3 && next === 0;
+      const freezing = previous === 2 && next === 3;
+      const thaw = weights[0];
+      const needles = thawing ? 1 - T.MathUtils.smoothstep(thaw,.28,.79)
+        : freezing ? T.MathUtils.smoothstep(f,.23,.84) : winterWeight;
+      const newLeaves = thawing ? T.MathUtils.smoothstep(thaw,.22,.82)
+        : freezing ? 1 - T.MathUtils.smoothstep(f,.08,.65) : 1 - winterWeight;
+      const trunk = thawing ? T.MathUtils.smoothstep(thaw,.30,.67)
+        : freezing ? 1 - T.MathUtils.smoothstep(f,.34,.73) : 1 - winterWeight;
+      const flowers = thawing ? T.MathUtils.smoothstep(thaw,.60,.99)
+        : previous === 0 && next === 1 ? 1 - T.MathUtils.smoothstep(f,.12,.65) : weights[0];
+      const ornaments = thawing ? 1 - T.MathUtils.smoothstep(thaw,.04,.40)
+        : freezing ? T.MathUtils.smoothstep(f,.71,.99) : winterWeight;
+
+      opacity(summerMaterials, newLeaves);
+      opacity(winterMaterials, ornaments);
+      opacity([pineMaterial], needles);
+      opacity([snowMaterial], thawing ? 1 - T.MathUtils.smoothstep(thaw,.12,.56)
+        : freezing ? T.MathUtils.smoothstep(f,.44,.91) : winterWeight);
+      opacity([bark], trunk);
+      opacity([pineBark], 1 - trunk);
+      opacity([blossomMaterial, blossomCenterMaterial], flowers);
+      blossoms.visible = blossomCenters.visible = flowers > .003;
+      summer.visible = Math.max(newLeaves, trunk, flowers) > .003;
+      winter.visible = Math.max(needles, 1 - trunk, snowMaterial.opacity, ornaments) > .003;
+
+      const autumnGrowth = weights[2];
+      apples.visible = autumnGrowth > .001;
+      opacity([appleMaterial, appleStem], freezing ? 1 - T.MathUtils.smoothstep(f,.04,.52) : 1);
+      for (const fruit of apples.children) {
+        const start = .10 + fruit.userData.growthDelay;
+        const size = freezing ? 1 : T.MathUtils.smoothstep(autumnGrowth,start,start+.40);
+        fruit.visible = size > .001;
+        fruit.scale.setScalar(size);
+      }
+      root.rotation.z = Math.sin(time * Math.PI / 10) * .009;
       summer.scale.setScalar(1 + weights[1] * .045);
       lightMaterial.emissiveIntensity = 1.25 + Math.sin(time * Math.PI / 10) * .20;
       const state = weights[0] + weights[1] * 10 + weights[2] * 100;
-      if (Math.abs(state - lastSeasonMix) > .02) {
+      if (previous !== lastPrevious || Math.abs(state - lastSeasonMix) > .02) {
         const total = Math.max(.001, 1 - winterWeight);
         baseColor.setRGB(
           (springColor.r * weights[0] + summerColor.r * weights[1] + autumnColor.r * weights[2]) / total,
           (springColor.g * weights[0] + summerColor.g * weights[1] + autumnColor.g * weights[2]) / total,
           (springColor.b * weights[0] + summerColor.b * weights[1] + autumnColor.b * weights[2]) / total);
         for (let i = 0; i < leafCount; i++) {
-          leafColor.copy(baseColor);
+          if (previous === 1 && next === 2) {
+            // Sun-exposed clusters turn first, with small variations within each cluster.
+            const cluster = clusters[i % clusters.length];
+            const delay = .25 * (1 - (cluster.y - 1.58) / .72) + leafSeeds[i] * .12;
+            leafColor.copy(summerColor).lerp(autumnColor,T.MathUtils.smoothstep(f,delay,delay+.60));
+          } else {
+            leafColor.copy(baseColor);
+          }
           leafColor.multiplyScalar(.65 + leafSeeds[i] * .55);
           leaves.setColorAt(i, leafColor);
         }
         leaves.instanceColor.needsUpdate = true;
         lastSeasonMix = state;
+        lastPrevious = previous;
       }
       return weights;
     },
