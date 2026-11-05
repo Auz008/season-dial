@@ -7,6 +7,7 @@ function createParkedSleigh(world, secondsPerSeason) {
   sleigh.name = 'Parked Christmas sleigh';
   sleigh.position.set(-1.60, .077, 2.65);
   sleigh.rotation.y = .55;
+  sleigh.scale.setScalar(1.20);
   sleigh.visible = false;
   world.add(sleigh);
 
