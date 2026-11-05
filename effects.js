@@ -327,6 +327,7 @@ export function createSeasonalEffects({ world, scene, camera, uniforms, random, 
     transparent: true, depthWrite: false, blending: T.AdditiveBlending,
     vertexShader: `
       uniform float uTime, uCycle, uPixelRatio, uSweepDirection;
+      uniform vec2 uHandDirection;
       varying float vAlpha;
       varying vec3 vColor;
       void main() {
@@ -341,7 +342,7 @@ export function createSeasonalEffects({ world, scene, camera, uniforms, random, 
         vColor = season < .5 ? spring : season < 1.5 ? summer : season < 2.5 ? autumn : winter;
         float crest = .5 + .5 * sin(radius * 8. - uTime * 4.);
         float lift = sin(age * 3.14159265) * (.11 + .24 * crest * position.z);
-        float angle = fract(uCycle) * 6.2831853 - uSweepDirection * (.008 + age * (.055 + seed * .052));
+        float angle = atan(uHandDirection.y,uHandDirection.x) - uSweepDirection * (.008 + age * (.055 + seed * .052));
         vec3 point = vec3(cos(angle) * radius, .17 + lift, sin(angle) * radius);
         vec4 viewPoint = modelViewMatrix * vec4(point, 1.);
         gl_Position = projectionMatrix * viewPoint;

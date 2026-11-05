@@ -1,5 +1,5 @@
 import * as T from './vendor/three.module.js';
-import { createSeasonalEffects } from './effects.js?v=winter-still-1';
+import { createSeasonalEffects } from './effects.js?v=opening-shadow-1';
 import { createSeasonalTree } from './tree.js?v=winter-still-1';
 import { createMeadowGarden } from './meadow.js?v=winter-gifts-4';
 import { installWallpaper } from './wallpaper.js?v=seated-cats-1';
@@ -28,7 +28,7 @@ const sun=new T.DirectionalLight(0xffecc3,3.1);sun.position.set(-4,8,-2);sun.cas
 const rim=new T.DirectionalLight(0x829fc8,1.4);rim.position.set(3,3,5);scene.add(rim);
 let seed=24841;const rnd=()=>{seed=(Math.imul(seed,1664525)+1013904223)|0;return(seed>>>0)/4294967296;};
 const TAU=Math.PI*2,R=5;
-const uniforms={uTime:{value:0},uPixelRatio:{value:renderer.getPixelRatio()},uCycle:{value:.12},uHandDirection:{value:new T.Vector2(1,0)},uCatA:{value:new T.Vector2()},uCatB:{value:new T.Vector2()}};
+const uniforms={uTime:{value:0},uPixelRatio:{value:renderer.getPixelRatio()},uCycle:{value:.12},uHandDirection:{value:new T.Vector2(1,0)},uOpeningShade:{value:0},uCatA:{value:new T.Vector2()},uCatB:{value:new T.Vector2()}};
 const seasonsGLSL=`
 const float TAU=6.28318530718;
 float seasonPhase(vec2 p){
@@ -54,6 +54,7 @@ float snowCover(vec3 season){
 `;
 const handGLSL=`
 uniform vec2 uHandDirection;
+uniform float uOpeningShade;
 vec2 handLocal(vec2 p){
   vec2 across=vec2(-uHandDirection.y,uHandDirection.x);
   return vec2(dot(p,uHandDirection),dot(p,across));
@@ -68,7 +69,11 @@ float handShade(vec2 p,float groundHeight){
   float feather=.025+clearance*.30;
   float along=smoothstep(.79,.95,local.x)*(1.-smoothstep(4.64,4.84,local.x));
   float shade=along*(1.-smoothstep(width*.30,width+feather,abs(local.y)));
-  return 1.-shade*.40;
+  // The opening hand clears the dark wedge between itself and the +X edge.
+  vec2 opening=handLocal(p);
+  float wedge=smoothstep(0.,.08,opening.y)*smoothstep(0.,.07,-p.y)
+    *smoothstep(.80,1.,opening.x);
+  return (1.-shade*.40)*(1.-wedge*uOpeningShade*.83);
   `}
 }
 `;
@@ -687,7 +692,7 @@ timeline.oninput=()=>{seasonTransition=null;cycle=+timeline.value;};document.que
 document.querySelector('#reset').onclick=()=>{azimuth=0;elevation=.63;distance=14.5;view();};document.querySelector('#full').onclick=()=>{if(document.fullscreenElement)document.exitFullscreen();else document.documentElement.requestFullscreen?.();};
 addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if(e.code==='Space'){e.preventDefault();toggle();}if(e.key.toLowerCase()==='h')document.body.classList.toggle('clean');if('1234'.includes(e.key)&&e.key.length===1)selectSeason(Number(e.key));});
 if(new URLSearchParams(location.search).has('clean'))document.body.classList.add('clean');
-function renderFrame(time,seasonCycle){
+function renderFrame(time,seasonCycle,openingAngle=0){
   if(seasonStill)seasonCycle=fixedCycle;
   uniforms.uTime.value=time;uniforms.uCycle.value=seasonCycle;uniforms.uPixelRatio.value=renderer.getPixelRatio();
   updateNuzzle(springStill ? 5.22 : time);
@@ -711,9 +716,10 @@ function renderFrame(time,seasonCycle){
     (1-T.MathUtils.smoothstep(summerProgress,.88,1));
   whiteCatHat.visible=hatOpacity>0;
   whiteCatHat.children.forEach(mesh=>{mesh.material.opacity=hatOpacity;});
-  const handAngle=(seasonCycle%1)*TAU;
+  const handAngle=(seasonCycle%1)*TAU+openingAngle;
   hand.rotation.y=-handAngle;
   uniforms.uHandDirection.value.set(Math.cos(handAngle),Math.sin(handAngle));
+  uniforms.uOpeningShade.value=T.MathUtils.smoothstep(-openingAngle,0,.09);
   const weights=seasonalTree.update(time,seasonCycle);meadowGarden.update(time,weights,seasonCycle);effects.update(time, seasonTransition && seasonTransition.to < seasonTransition.from ? -1 : 1);
   renderer.render(scene,camera);
 }
@@ -729,7 +735,10 @@ function animate(now){
   }else if(playing && !seasonStill && (cycle!==springCycle || elapsed>=springOpeningSeconds)){
     cycle+=dt*speed/secondsPerSeason;
   }
-  renderFrame(elapsed,cycle);
+  const openingAngle=!seasonStill && !seasonTransition && cycle===springCycle
+    ? -.72*(1-T.MathUtils.smoothstep(elapsed,0,1.15))
+    : 0;
+  renderFrame(elapsed,cycle,openingAngle);
   timeline.value=((cycle%4)+4)%4;
   const current=((Math.floor(cycle)-(cycle%1>.5?0:1))%4+4)%4;
   document.querySelector('#time').textContent=names[current];
