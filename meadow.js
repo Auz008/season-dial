@@ -189,7 +189,56 @@ export function createMeadowGarden(world, random, windTime, snowman, seasonCycle
     const angle=T.MathUtils.euclideanModulo(Math.atan2(z,x)/(Math.PI*2),1);
     return {cluster,paints:[...papers,ribbon],angle};
   });
+  const appleProfile=[
+    [0,-.091],[.050,-.101],[.087,-.074],[.108,-.024],[.110,.033],
+    [.088,.080],[.050,.094],[.018,.075],[0,.072],
+  ].map(([radius,height])=>new T.Vector2(radius,height));
+  const appleGeometry=new T.LatheGeometry(appleProfile,20);
+  const appleLeaf=new T.SphereGeometry(1,8,5);
+  const applePile=new T.Group();
+  applePile.name='Autumn apple harvest';
+  applePile.position.set(2.87,0,-2.21);
+  group.add(applePile);
+  const harvest=[
+    [-.22,.108,0],[-.01,.108,.04],[.20,.108,.01],
+    [-.12,.108,-.20],[.10,.108,-.19],[-.04,.108,.24],
+    [-.12,.289,-.05],[.10,.287,-.035],[.01,.45,-.05],
+  ].map(([x,y,z],index)=>{
+    const apple=new T.Group();
+    apple.position.set(x,y,z);
+    apple.rotation.set(.06*(index%3-1),index*1.7,.13*(index%2?1:-1));
+    applePile.add(apple);
+    const skin=new T.MeshStandardMaterial({
+      color:[0xc83a32,0xe49c35,0xa93135][index%3],roughness:.51,transparent:true,
+    });
+    const stalk=new T.MeshStandardMaterial({color:0x67432c,roughness:.9,transparent:true});
+    const foliage=new T.MeshStandardMaterial({color:0x66863c,roughness:.85,transparent:true});
+    apple.add(new T.Mesh(appleGeometry,skin));
+    const stem=new T.Mesh(new T.CylinderGeometry(.006,.008,.054,5),stalk);
+    stem.position.set(.007,.098,0);
+    stem.rotation.z=-.24;
+    apple.add(stem);
+    const leaf=new T.Mesh(appleLeaf,foliage);
+    leaf.position.set(.038,.114,0);
+    leaf.scale.set(.038,.006,.015);
+    leaf.rotation.z=.18;
+    apple.add(leaf);
+    const root=new T.Vector2(applePile.position.x+x,applePile.position.z+z);
+    const angle=T.MathUtils.euclideanModulo(Math.atan2(root.y,root.x)/(Math.PI*2),1);
+    return {apple,angle,paints:[skin,stalk,foliage]};
+  });
   return {update(time,cycle){
+    for(const {apple,angle,paints} of harvest){
+      const autumn=T.MathUtils.euclideanModulo(cycle-angle,4);
+      const opacity=T.MathUtils.smoothstep(autumn,2,2.045)*
+        (1-T.MathUtils.smoothstep(autumn,3,3.035));
+      apple.visible=opacity>.001;
+      apple.scale.setScalar(.92+.08*opacity);
+      for(const paint of paints){
+        paint.opacity=opacity;
+        paint.depthWrite=opacity>.95;
+      }
+    }
     for(const {cluster,paints,angle} of winterGifts){
       const winter=T.MathUtils.euclideanModulo(cycle-angle,4);
       const opacity=T.MathUtils.smoothstep(winter,3,3.10)*

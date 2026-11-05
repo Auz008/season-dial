@@ -1,7 +1,7 @@
 import * as T from './vendor/three.module.js';
-import { createSeasonalEffects } from './effects.js?v=festive-sleigh-3';
+import { createSeasonalEffects } from './effects.js?v=apple-harvest-1';
 import { createSeasonalTree } from './tree.js?v=ornament-reveal-2';
-import { createMeadowGarden } from './meadow.js?v=meadow-sweep-1';
+import { createMeadowGarden } from './meadow.js?v=apple-harvest-1';
 import { installWallpaper } from './wallpaper.js?v=seated-cats-1';
 
 const sceneOptions = new URLSearchParams(location.search);

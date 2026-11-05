@@ -5,7 +5,7 @@ const winterFlightStart = 1 / 3;
 function createParkedSleigh(world, secondsPerSeason) {
   const sleigh = new T.Group();
   sleigh.name = 'Parked Christmas sleigh';
-  sleigh.position.set(-1.82, .077, 2.65);
+  sleigh.position.set(-2.72, .077, 2.65);
   sleigh.rotation.y = .55;
   sleigh.scale.setScalar(1.36);
   sleigh.visible = false;
