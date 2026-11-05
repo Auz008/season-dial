@@ -1,7 +1,7 @@
 import * as T from './vendor/three.module.js';
 import { createSeasonalEffects } from './effects.js?v=opening-shadow-1';
 import { createSeasonalTree } from './tree.js?v=winter-still-1';
-import { createMeadowGarden } from './meadow.js?v=winter-gifts-4';
+import { createMeadowGarden } from './meadow.js?v=local-spring-1';
 import { installWallpaper } from './wallpaper.js?v=seated-cats-1';
 
 const sceneOptions = new URLSearchParams(location.search);
@@ -300,6 +300,31 @@ function summerHat(){
   band.position.y=.030;
   hat.add(band);
   return hat;
+}
+
+function winterHat(dark){
+  const hat=new T.Group();
+  hat.visible=false;
+  hat.position.set(0,.075,-.012);
+  const knit=new T.MeshStandardMaterial({
+    color:dark?0x41645a:0xb8494d,bumpMap:scarfWeave,bumpScale:.003,roughness:.93,transparent:true,
+  });
+  const trim=new T.MeshStandardMaterial({
+    color:0xf1e4ce,bumpMap:scarfWeave,bumpScale:.002,roughness:.94,transparent:true,
+  });
+  const profile=[
+    [0,0],[.131,0],[.149,.016],[.151,.045],[.150,.096],
+    [.138,.136],[.110,.166],[.073,.185],[0,.195],
+  ].map(([radius,height])=>new T.Vector2(radius,height));
+  hat.add(new T.Mesh(new T.LatheGeometry(profile,32),knit));
+  const cuff=new T.Mesh(new T.TorusGeometry(.140,.014,8,32),trim);
+  cuff.rotation.x=Math.PI/2;
+  cuff.position.y=.023;
+  hat.add(cuff);
+  const pom=new T.Mesh(new T.SphereGeometry(.037,16,12),trim);
+  pom.position.set(.016,.205,-.016);
+  hat.add(pom);
+  return {hat,knit,trim};
 }
 
 function updateWinterScarves(time,cycle){
@@ -641,6 +666,13 @@ const seasonalBenchFigures=[[benchFigures.scarecrow,2],[benchFigures.snowman,3]]
 const cats=[cat(false),cat(true)];
 const whiteCatHat=summerHat();
 cats[0].head.add(whiteCatHat);
+const winterHats=cats.map(({group,head},index)=>{
+  const {x,z}=group.position;
+  const angle=T.MathUtils.euclideanModulo(Math.atan2(z,x)/TAU,1);
+  const winter=winterHat(index===1);
+  head.add(winter.hat);
+  return {...winter,angle};
+});
 uniforms.uCatA.value.set(cats[0].group.position.x,cats[0].group.position.z);
 uniforms.uCatB.value.set(cats[1].group.position.x,cats[1].group.position.z);
 const secondsPerSeason=15;
@@ -659,7 +691,7 @@ function updateNuzzle(time){
   });
 }
 const seasonalTree=createSeasonalTree(world,rnd);
-const meadowGarden=createMeadowGarden(world,rnd,springStill ? uniforms.uTime : null,benchFigures.snowman);
+const meadowGarden=createMeadowGarden(world,rnd,springStill ? uniforms.uTime : null,benchFigures.snowman,uniforms.uCycle,seasonsGLSL);
 
 const effects=createSeasonalEffects({world,scene,camera,uniforms,random:rnd,springStill,summerStill,winterStill});
 
@@ -717,6 +749,13 @@ function renderFrame(time,seasonCycle,openingAngle=0){
     (1-T.MathUtils.smoothstep(summerProgress,.88,1));
   whiteCatHat.visible=hatOpacity>0;
   whiteCatHat.children.forEach(mesh=>{mesh.material.opacity=hatOpacity;});
+  for(const {hat,knit,trim,angle} of winterHats){
+    const progress=T.MathUtils.euclideanModulo(seasonCycle-angle-3,4);
+    const opacity=T.MathUtils.smoothstep(progress,0,.026)*
+      (1-T.MathUtils.smoothstep(progress,1,1.026));
+    hat.visible=opacity>0;
+    knit.opacity=trim.opacity=opacity;
+  }
   const handAngle=(seasonCycle%1)*TAU+openingAngle;
   hand.rotation.y=-handAngle;
   uniforms.uHandDirection.value.set(Math.cos(handAngle),Math.sin(handAngle));

@@ -1,7 +1,7 @@
 import * as T from './vendor/three.module.js';
 
 // Spring is a tiny wildflower garden; summer is a green dandelion meadow.
-export function createMeadowGarden(world, random, windTime, snowman) {
+export function createMeadowGarden(world, random, windTime, snowman, seasonCycle, seasonsGLSL) {
   const group=new T.Group();world.add(group);
   const dummy=new T.Object3D();
   const springMaterials=[],summerMaterials=[];
@@ -9,38 +9,58 @@ export function createMeadowGarden(world, random, windTime, snowman) {
   const springStem=mat(0x42742e,springMaterials);
   const petalMaterial=mat(0xffffff,springMaterials);
   const centerMaterial=mat(0xe1b850,springMaterials);
-  if(windTime){
-    for(const material of springMaterials){
-      material.onBeforeCompile=shader=>{
-        shader.uniforms.flowerTime=windTime;
-        shader.vertexShader='uniform float flowerTime;\n'+shader.vertexShader;
-        // Bend in meadow coordinates so petals and stems share the same wind.
-        shader.vertexShader=shader.vertexShader.replace('#include <project_vertex>',
-          T.ShaderChunk.project_vertex.replace('mvPosition = modelViewMatrix * mvPosition;', `
-            vec2 root = instanceMatrix[3].xz;
+  for(const material of springMaterials){
+    material.transparent=false;
+    material.onBeforeCompile=shader=>{
+      shader.uniforms.uCycle=seasonCycle;
+      if(windTime)shader.uniforms.flowerTime=windTime;
+      shader.vertexShader=`
+        uniform float uCycle;
+        attribute vec2 flowerRoot;
+        ${windTime ? 'uniform float flowerTime;' : ''}
+        ${seasonsGLSL}
+      `+shader.vertexShader;
+      // Scale the whole flower around its root, using the same sweep as the ground.
+      shader.vertexShader=shader.vertexShader.replace('#include <project_vertex>',
+        T.ShaderChunk.project_vertex.replace('mvPosition = modelViewMatrix * mvPosition;', `
+          vec3 season = seasonMix(flowerRoot);
+          float spring = mix(1.-step(.5,season.x),1.-step(.5,season.y),season.z);
+          float growth = smoothstep(.40,.99,spring);
+          ${windTime ? `
+            vec2 root = flowerRoot;
             float gust = sin(flowerTime * .92 + dot(root, vec2(.8, .65)));
             float height = max(mvPosition.y, 0.0);
             mvPosition.xz += vec2(gust, .65 * sin(flowerTime * .70 + root.y))
               * height * height * .29;
-            mvPosition = modelViewMatrix * mvPosition;
-          `));
-      };
-    }
+          ` : ''}
+          vec3 anchor = vec3(flowerRoot.x,0.,flowerRoot.y);
+          mvPosition.xyz = mix(anchor,mvPosition.xyz,growth);
+          mvPosition = modelViewMatrix * mvPosition;
+        `));
+    };
   }
   const flowerCount=142;
   const stems=new T.InstancedMesh(new T.CylinderGeometry(1,1,1,5),springStem,flowerCount);
   const petals=new T.InstancedMesh(new T.SphereGeometry(1,6,4),petalMaterial,flowerCount*6);
   const centers=new T.InstancedMesh(new T.SphereGeometry(.015,6,4),centerMaterial,flowerCount);
+  const roots=new Float32Array(flowerCount*2);
+  const petalRoots=new Float32Array(flowerCount*12);
   const colors=[0xff75a5,0xf0528f,0xac69ef,0x5899ee,0xffc934,0xff6858,0xffe8c0];
   function position(){let x,z;do{const a=random()*Math.PI*2,r=1.25+Math.sqrt(random())*3.45;x=Math.cos(a)*r;z=Math.sin(a)*r;}while(Math.hypot(x-.8,z-2.3)<.85);return [x,z];}
   for(let i=0;i<flowerCount;i++){
     const [x,z]=position(),height=.24+random()*.105;
+    roots.set([x,z],i*2);
     dummy.position.set(x,height/2,z);dummy.rotation.set(0,0,0);dummy.scale.set(.006,height,.006);dummy.updateMatrix();stems.setMatrixAt(i,dummy.matrix);
     for(let k=0;k<6;k++){
+      petalRoots.set([x,z],(i*6+k)*2);
       const a=k/6*Math.PI*2;dummy.position.set(x+Math.cos(a)*.035,height,z+Math.sin(a)*.035);dummy.rotation.set(0,-a+Math.PI/2,0);dummy.scale.set(.028,.008,.043);dummy.updateMatrix();petals.setMatrixAt(i*6+k,dummy.matrix);petals.setColorAt(i*6+k,new T.Color(colors[i%colors.length]));
     }
     dummy.position.set(x,height+.006,z);dummy.scale.setScalar(1);dummy.updateMatrix();centers.setMatrixAt(i,dummy.matrix);
   }
+  const flowerRoots=new T.InstancedBufferAttribute(roots,2);
+  stems.geometry.setAttribute('flowerRoot',flowerRoots);
+  centers.geometry.setAttribute('flowerRoot',flowerRoots);
+  petals.geometry.setAttribute('flowerRoot',new T.InstancedBufferAttribute(petalRoots,2));
   group.add(stems,petals,centers);
   const summerStem=mat(0x49753b,summerMaterials);
   const puffStemCount=48;
@@ -173,8 +193,6 @@ export function createMeadowGarden(world, random, windTime, snowman) {
       stemPaint.depthWrite=grainPaint.depthWrite=opacity>.95;
       patch.rotation.z=.06+.065*Math.sin(time*1.45+angle*8);
     }
-    for(const m of springMaterials){m.opacity=weights[0];m.depthWrite=weights[0]>.95;}
-    for(const object of [stems,petals,centers])object.visible=weights[0]>.01;
     for(const m of summerMaterials){m.opacity=weights[1];m.depthWrite=weights[1]>.95;}
     for(const object of [puffStems,puffLines,puffTips])object.visible=weights[1]>.01;
     strandsMaterial.opacity=weights[1]*.46;tipsMaterial.opacity=weights[1]*.65;
