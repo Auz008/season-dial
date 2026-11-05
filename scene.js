@@ -113,6 +113,54 @@ void main(){
 }`});
 const disk=new T.Mesh(new T.CylinderGeometry(R,R,.20,160),new T.MeshStandardMaterial({color:0x080b0d,metalness:.5,roughness:.48}));disk.position.y=-.13;world.add(disk);
 const surfaceGeo=new T.PlaneGeometry(10,10,140,140);surfaceGeo.rotateX(-Math.PI/2);const surface=new T.Mesh(surfaceGeo,diskMat);surface.position.y=-.021;world.add(surface);
+// A transparent inscription follows the same snow surface as the dial.
+const greetingCanvas=document.createElement('canvas');
+greetingCanvas.width=1536;greetingCanvas.height=384;
+const greetingContext=greetingCanvas.getContext('2d');
+greetingContext.font='italic 118px Georgia, serif';
+greetingContext.textAlign='center';
+greetingContext.textBaseline='middle';
+const greetingGold=greetingContext.createLinearGradient(0,115,0,265);
+greetingGold.addColorStop(0,'#95632c');
+greetingGold.addColorStop(.5,'#c3974f');
+greetingGold.addColorStop(1,'#976333');
+greetingContext.fillStyle=greetingGold;
+greetingContext.fillText('Merry Christmas',768,192,1460);
+const greetingTexture=new T.CanvasTexture(greetingCanvas);
+greetingTexture.colorSpace=T.SRGBColorSpace;
+greetingTexture.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
+const greetingGeometry=new T.PlaneGeometry(2.72,.82,64,20);
+greetingGeometry.rotateX(-Math.PI/2);
+greetingGeometry.translate(2.38,0,-1.62);
+const greeting=new T.Mesh(greetingGeometry,new T.ShaderMaterial({
+  transparent:true,depthWrite:false,
+  uniforms:{uCycle:uniforms.uCycle,uLetters:{value:greetingTexture}},
+  vertexShader:`
+    uniform float uCycle;
+    varying vec2 vGreetingUV,vGreetingRoot;
+    ${seasonsGLSL}
+    void main(){
+      vGreetingUV=uv;
+      vGreetingRoot=position.xz;
+      vec3 p=position;
+      p.y=snowHeight(p.xz)*snowCover(seasonMix(p.xz))-.017;
+      gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.);
+    }
+  `,
+  fragmentShader:`
+    uniform float uCycle;
+    uniform sampler2D uLetters;
+    varying vec2 vGreetingUV,vGreetingRoot;
+    ${seasonsGLSL}
+    void main(){
+      vec4 letters=texture2D(uLetters,vGreetingUV);
+      float winter=smoothstep(.35,.95,snowCover(seasonMix(vGreetingRoot)));
+      gl_FragColor=vec4(letters.rgb,letters.a*winter);
+    }
+  `,
+}));
+greeting.name='Christmas lettering on the snow';
+world.add(greeting);
 function ring(radius,tube,color,y){const m=new T.Mesh(new T.TorusGeometry(radius,tube,8,160),new T.MeshStandardMaterial({color,metalness:.7,roughness:.35}));m.rotation.x=Math.PI/2;m.position.y=y;world.add(m);return m;}
 ring(5,.025,0x252b27,-.03);ring(4.99,.012,0x8f9272,-.012);
 const marks=new T.InstancedMesh(new T.BoxGeometry(.018,.034,.085),new T.MeshStandardMaterial({color:0xc8c9b4,emissive:0x3a3b30}),100);
@@ -726,7 +774,6 @@ timeline.oninput=()=>{seasonTransition=null;cycle=+timeline.value;};document.que
 document.querySelector('#reset').onclick=()=>{azimuth=0;elevation=.63;distance=14.5;view();};document.querySelector('#full').onclick=()=>{if(document.fullscreenElement)document.exitFullscreen();else document.documentElement.requestFullscreen?.();};
 addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if(e.code==='Space'){e.preventDefault();toggle();}if(e.key.toLowerCase()==='h')document.body.classList.toggle('clean');if('1234'.includes(e.key)&&e.key.length===1)selectSeason(Number(e.key));});
 if(new URLSearchParams(location.search).has('clean'))document.body.classList.add('clean');
-const winterGreeting=document.querySelector('#winter-greeting');
 function renderFrame(time,seasonCycle,openingAngle=0){
   if(seasonStill)seasonCycle=fixedCycle;
   uniforms.uTime.value=time;uniforms.uCycle.value=seasonCycle;uniforms.uPixelRatio.value=renderer.getPixelRatio();
@@ -755,8 +802,7 @@ function renderFrame(time,seasonCycle,openingAngle=0){
   hand.rotation.y=-handAngle;
   uniforms.uHandDirection.value.set(Math.cos(handAngle),Math.sin(handAngle));
   uniforms.uOpeningShade.value=T.MathUtils.smoothstep(-openingAngle,0,.09);
-  const weights=seasonalTree.update(time,seasonCycle);
-  winterGreeting.style.opacity=T.MathUtils.smoothstep(weights[3],.12,.70);
+  seasonalTree.update(time,seasonCycle);
   meadowGarden.update(time,seasonCycle);effects.update(time, seasonTransition && seasonTransition.to < seasonTransition.from ? -1 : 1);
   renderer.render(scene,camera);
 }
