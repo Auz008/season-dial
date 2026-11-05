@@ -115,23 +115,32 @@ const disk=new T.Mesh(new T.CylinderGeometry(R,R,.20,160),new T.MeshStandardMate
 const surfaceGeo=new T.PlaneGeometry(10,10,140,140);surfaceGeo.rotateX(-Math.PI/2);const surface=new T.Mesh(surfaceGeo,diskMat);surface.position.y=-.021;world.add(surface);
 // A transparent inscription follows the same snow surface as the dial.
 const greetingCanvas=document.createElement('canvas');
-greetingCanvas.width=1536;greetingCanvas.height=384;
+greetingCanvas.width=2048;greetingCanvas.height=384;
 const greetingContext=greetingCanvas.getContext('2d');
-greetingContext.font='italic 118px Georgia, serif';
+greetingContext.font='bold italic 180px Georgia, serif';
 greetingContext.textAlign='center';
 greetingContext.textBaseline='middle';
-const greetingGold=greetingContext.createLinearGradient(0,115,0,265);
-greetingGold.addColorStop(0,'#95632c');
-greetingGold.addColorStop(.5,'#c3974f');
-greetingGold.addColorStop(1,'#976333');
+const greetingGold=greetingContext.createLinearGradient(0,105,0,280);
+greetingGold.addColorStop(0,'#e5ad3d');
+greetingGold.addColorStop(.32,'#ffe29a');
+greetingGold.addColorStop(.57,'#e9b440');
+greetingGold.addColorStop(1,'#b77c16');
 greetingContext.fillStyle=greetingGold;
-greetingContext.fillText('Merry Christmas',768,192,1460);
+greetingContext.translate(1024,192);
+greetingContext.scale(1900/greetingContext.measureText('Merry Christmas').width,1);
+greetingContext.fillText('Merry Christmas',0,0);
 const greetingTexture=new T.CanvasTexture(greetingCanvas);
 greetingTexture.colorSpace=T.SRGBColorSpace;
 greetingTexture.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
-const greetingGeometry=new T.PlaneGeometry(2.72,.82,64,20);
-greetingGeometry.rotateX(-Math.PI/2);
-greetingGeometry.translate(2.38,0,-1.62);
+const greetingGeometry=new T.PlaneGeometry(1,1,128,24);
+const greetingPositions=greetingGeometry.attributes.position;
+const greetingUV=greetingGeometry.attributes.uv;
+for(let i=0;i<greetingPositions.count;i++){
+  const angle=-1.36+greetingUV.getX(i)*1.22;
+  const radius=4.05+(greetingUV.getY(i)-.5)*1.50;
+  greetingPositions.setXYZ(i,Math.cos(angle)*radius,0,Math.sin(angle)*radius);
+}
+greetingGeometry.computeBoundingSphere();
 const greeting=new T.Mesh(greetingGeometry,new T.ShaderMaterial({
   transparent:true,depthWrite:false,
   uniforms:{uCycle:uniforms.uCycle,uLetters:{value:greetingTexture}},
