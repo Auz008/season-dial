@@ -726,6 +726,7 @@ timeline.oninput=()=>{seasonTransition=null;cycle=+timeline.value;};document.que
 document.querySelector('#reset').onclick=()=>{azimuth=0;elevation=.63;distance=14.5;view();};document.querySelector('#full').onclick=()=>{if(document.fullscreenElement)document.exitFullscreen();else document.documentElement.requestFullscreen?.();};
 addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if(e.code==='Space'){e.preventDefault();toggle();}if(e.key.toLowerCase()==='h')document.body.classList.toggle('clean');if('1234'.includes(e.key)&&e.key.length===1)selectSeason(Number(e.key));});
 if(new URLSearchParams(location.search).has('clean'))document.body.classList.add('clean');
+const winterGreeting=document.querySelector('#winter-greeting');
 function renderFrame(time,seasonCycle,openingAngle=0){
   if(seasonStill)seasonCycle=fixedCycle;
   uniforms.uTime.value=time;uniforms.uCycle.value=seasonCycle;uniforms.uPixelRatio.value=renderer.getPixelRatio();
@@ -754,7 +755,9 @@ function renderFrame(time,seasonCycle,openingAngle=0){
   hand.rotation.y=-handAngle;
   uniforms.uHandDirection.value.set(Math.cos(handAngle),Math.sin(handAngle));
   uniforms.uOpeningShade.value=T.MathUtils.smoothstep(-openingAngle,0,.09);
-  seasonalTree.update(time,seasonCycle);meadowGarden.update(time,seasonCycle);effects.update(time, seasonTransition && seasonTransition.to < seasonTransition.from ? -1 : 1);
+  const weights=seasonalTree.update(time,seasonCycle);
+  winterGreeting.style.opacity=T.MathUtils.smoothstep(weights[3],.12,.70);
+  meadowGarden.update(time,seasonCycle);effects.update(time, seasonTransition && seasonTransition.to < seasonTransition.from ? -1 : 1);
   renderer.render(scene,camera);
 }
 function animate(now){

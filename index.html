@@ -9,10 +9,24 @@
 <style>
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#030609;color:#e8e6dc;font:11px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}canvas{display:block;width:100%;height:100%;touch-action:none}button{border:0;background:transparent;color:#aab1a9;padding:9px;cursor:pointer;font:inherit;letter-spacing:.06em}button:hover,button[aria-pressed=true]{color:#f0dbab}button:focus-visible,input:focus-visible{outline:1px solid #e9d39e;outline-offset:4px}footer{position:fixed;z-index:3;bottom:24px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:12px;padding:7px 14px;background:#07101191;border:1px solid #bcbda51a;border-radius:40px;backdrop-filter:blur(18px);white-space:nowrap;transition:opacity 1s,transform 1s}body.idle footer{opacity:0;transform:translate(-50%,10px);pointer-events:none}footer:focus-within,body.idle footer:hover{opacity:1;transform:translate(-50%,0);pointer-events:auto}#play{width:38px;border-right:1px solid #ffffff18}input{accent-color:#cbbd8b;width:85px;height:2px}#time{font-size:9px;color:#92988c;min-width:34px}.divider{height:15px;width:1px;background:#ffffff18}#error{position:fixed;inset:35% 15%;display:none;line-height:2;text-align:center;color:#bec5c2}#reference-dialog{background:#030609;color:#ddd;border:1px solid #ffffff20;border-radius:12px;max-width:96vw;padding:10px}#reference-dialog::backdrop{background:#020508eb;backdrop-filter:blur(12px)}#reference-dialog img{display:block;max-width:90vw;max-height:82vh}#reference-dialog p{text-align:center;color:#8b9697;font-size:10px;letter-spacing:1px}body.clean footer,body.wallpaper footer{display:none}#artwork{position:fixed;inset:0;width:100%;height:100%;object-fit:contain;background:#020408;display:none}body.art-mode #artwork{display:block}body.art-mode #scene{visibility:hidden}body.art-mode .live-only{display:none}#mode{min-width:72px}@media(max-width:650px){footer{gap:4px;padding:6px 9px;bottom:16px}button{padding:9px 6px;font-size:10px}input{width:50px}#time,.optional{display:none}}@media(max-width:420px){footer{gap:2px;max-width:calc(100vw - 16px)}#seasons button{font-size:0;padding:9px 7px}#seasons button::after{content:attr(data-short);font-size:10px}#timeline{display:none}#mode{min-width:61px}}@media(prefers-reduced-motion:reduce){footer{transition:none}}
 #gift-dialog{background:#071012;color:#d9e2de;border:1px solid #bcbda52a;border-radius:20px;padding:26px;max-width:380px;line-height:1.8}#gift-dialog::backdrop{background:#020508c9;backdrop-filter:blur(8px)}#gift-dialog h2{font:400 21px Georgia,serif;letter-spacing:2px}#gift-dialog p{color:#8b9c99}#gift-dialog a,#gift-dialog button{display:block;color:#d8c69a;text-decoration:none;margin:10px 0;padding:6px 0}#gift-close{float:right}.gift-note{font-size:10px}#gift{padding:9px 6px}@media(max-width:420px){#mode{display:none}}
+#winter-greeting{
+  position:fixed;
+  top:max(28px,env(safe-area-inset-top));
+  right:clamp(24px,4vw,72px);
+  margin:0;
+  color:#ead5a9;
+  font:italic 400 clamp(17px,2.1vw,30px)/1.4 Georgia,"Times New Roman",serif;
+  letter-spacing:.045em;
+  text-shadow:0 0 18px #e9b87335;
+  opacity:0;
+  pointer-events:none;
+  user-select:none;
+}
 </style>
 </head>
 <body>
 <canvas id="scene" aria-label="A seasonal meadow dial floating in the stars, with two cats and a golden wheat hand"></canvas>
+<p id="winter-greeting" class="live-only" aria-hidden="true">Merry Christmas</p>
 <img id="artwork" src="./reference-render.png" loading="lazy" alt="Season Dial: a generated artwork of a floating autumn, green and snow meadow with two cats">
 <dialog id="reference-dialog"><button id="close-reference" style="float:right" aria-label="Close artwork">Close &times;</button><img src="./reference-render.png" loading="lazy" alt="The generated visual reference for this project"><p>ARTWORK REFERENCE</p></dialog>
 <footer aria-label="Scene controls">
@@ -25,5 +39,5 @@
 </footer>
 <dialog id="gift-dialog"><button id="gift-close" aria-label="Close gift menu">Close &times;</button><h2>A little world, for you.</h2><p>Four seasons. Two little companions.</p><button id="wallpaper-view">Enter wallpaper view</button><button id="save-image">Save wallpaper image</button><a href="./gift/">Browse the iPad wallpaper images</a><a href="./gift/season-dial-macbook-air.mp4" download>Download the MacBook Air film</a><a href="./gift/season-dial-ipad-portrait.mp4" download>Download the iPad portrait film</a><a href="./gift/season-dial-ipad.mp4" download>Download the iPad landscape film</a><p class="gift-note">The web view animates continuously. iPad Lock Screen motion uses a compatible Live Photo and plays on wake; a web page or MP4 cannot be installed directly as an animated system wallpaper. Double-tap the scene to show or hide controls.</p></dialog>
 <div id="error" role="status"></div>
-<script src="./interface.js?v=gift-1"></script><script type="module" src="./scene.js?v=complete-gifts-1"></script>
+<script src="./interface.js?v=gift-1"></script><script type="module" src="./scene.js?v=christmas-greeting-1"></script>
 </body></html>
