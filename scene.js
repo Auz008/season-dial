@@ -664,7 +664,9 @@ for(let i=0;i<130;i++){const x=rnd()*1024,y=260+Math.sin(x/170)*35+(rnd()-.5)*95
 const nebula=new T.Mesh(new T.PlaneGeometry(60,30),new T.MeshBasicMaterial({map:new T.CanvasTexture(nebulaCanvas),transparent:true,opacity:1.1,depthWrite:false,blending:T.AdditiveBlending}));nebula.position.set(0,2,-17);nebula.rotation.z=.14;scene.add(nebula);
 
 let capturing=false;
-let azimuth=0,elevation=.63,distance=14.5,playing=true,speed=1,cycle=fixedCycle ?? 4,elapsed=0,last=performance.now(),pointer=null;
+const springCycle=1;
+const springOpeningSeconds=1.5;
+let azimuth=0,elevation=.63,distance=14.5,playing=true,speed=1,cycle=fixedCycle ?? springCycle,elapsed=0,last=performance.now(),pointer=null;
 function view(){camera.position.set(Math.sin(azimuth)*Math.cos(elevation)*distance,Math.sin(elevation)*distance,Math.cos(azimuth)*Math.cos(elevation)*distance);camera.lookAt(0,-.65,0);}
 function fitBackground(){const texture=scene.background;if(!texture?.image)return;const aspect=camera.aspect;const imageAspect=texture.image.width/texture.image.height;texture.repeat.set(Math.min(1,aspect/imageAspect),Math.min(1,imageAspect/aspect));texture.offset.set((1-texture.repeat.x)/2,(1-texture.repeat.y)/2);texture.needsUpdate=true;}
 function resize(){if(capturing)return;renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.fov=camera.aspect<1.2?T.MathUtils.radToDeg(2*Math.atan(5.8/(distance*camera.aspect))):wideCameraFov;camera.updateProjectionMatrix();view();fitBackground();}addEventListener('resize',resize);resize();
@@ -724,7 +726,7 @@ function animate(now){
     const progress=T.MathUtils.smoothstep(now-start,0,1500);
     cycle=((T.MathUtils.lerp(from,to,progress)%4)+4)%4;
     if(progress===1)seasonTransition=null;
-  }else if(playing && !seasonStill){
+  }else if(playing && !seasonStill && (cycle!==springCycle || elapsed>=springOpeningSeconds)){
     cycle+=dt*speed/secondsPerSeason;
   }
   renderFrame(elapsed,cycle);
