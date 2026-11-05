@@ -1,7 +1,7 @@
 import * as T from './vendor/three.module.js';
 import { createSeasonalEffects } from './effects.js?v=opening-shadow-1';
 import { createSeasonalTree } from './tree.js?v=winter-still-1';
-import { createMeadowGarden } from './meadow.js?v=local-spring-1';
+import { createMeadowGarden } from './meadow.js?v=meadow-sweep-1';
 import { installWallpaper } from './wallpaper.js?v=seated-cats-1';
 
 const sceneOptions = new URLSearchParams(location.search);
@@ -760,7 +760,7 @@ function renderFrame(time,seasonCycle,openingAngle=0){
   hand.rotation.y=-handAngle;
   uniforms.uHandDirection.value.set(Math.cos(handAngle),Math.sin(handAngle));
   uniforms.uOpeningShade.value=T.MathUtils.smoothstep(-openingAngle,0,.09);
-  const weights=seasonalTree.update(time,seasonCycle);meadowGarden.update(time,weights,seasonCycle);effects.update(time, seasonTransition && seasonTransition.to < seasonTransition.from ? -1 : 1);
+  seasonalTree.update(time,seasonCycle);meadowGarden.update(time,seasonCycle);effects.update(time, seasonTransition && seasonTransition.to < seasonTransition.from ? -1 : 1);
   renderer.render(scene,camera);
 }
 function animate(now){

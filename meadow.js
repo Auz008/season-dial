@@ -4,41 +4,52 @@ import * as T from './vendor/three.module.js';
 export function createMeadowGarden(world, random, windTime, snowman, seasonCycle, seasonsGLSL) {
   const group=new T.Group();world.add(group);
   const dummy=new T.Object3D();
-  const springMaterials=[],summerMaterials=[];
-  function mat(color,list,extra={}){const m=new T.MeshStandardMaterial({color,roughness:.85,transparent:true,...extra});list.push(m);return m;}
-  const springStem=mat(0x42742e,springMaterials);
-  const petalMaterial=mat(0xffffff,springMaterials);
-  const centerMaterial=mat(0xe1b850,springMaterials);
-  for(const material of springMaterials){
-    material.transparent=false;
+  function plantMaterial(color){
+    return new T.MeshStandardMaterial({color,roughness:.85});
+  }
+  function followSeason(material,seasonIndex,wind=null){
+    const fade=material.transparent;
+    material.customProgramCacheKey=()=>`meadow-${seasonIndex}-${Boolean(wind)}-${fade}`;
     material.onBeforeCompile=shader=>{
       shader.uniforms.uCycle=seasonCycle;
-      if(windTime)shader.uniforms.flowerTime=windTime;
+      if(wind)shader.uniforms.flowerTime=wind;
       shader.vertexShader=`
         uniform float uCycle;
-        attribute vec2 flowerRoot;
-        ${windTime ? 'uniform float flowerTime;' : ''}
+        attribute vec2 plantRoot;
+        ${wind ? 'uniform float flowerTime;' : ''}
+        ${fade ? 'varying float vPlantGrowth;' : ''}
         ${seasonsGLSL}
       `+shader.vertexShader;
-      // Scale the whole flower around its root, using the same sweep as the ground.
+      // Grow or shrink each plant around its root, in sync with the ground beneath it.
       shader.vertexShader=shader.vertexShader.replace('#include <project_vertex>',
         T.ShaderChunk.project_vertex.replace('mvPosition = modelViewMatrix * mvPosition;', `
-          vec3 season = seasonMix(flowerRoot);
-          float spring = mix(1.-step(.5,season.x),1.-step(.5,season.y),season.z);
-          float growth = smoothstep(.40,.99,spring);
-          ${windTime ? `
-            vec2 root = flowerRoot;
-            float gust = sin(flowerTime * .92 + dot(root, vec2(.8, .65)));
+          vec3 season = seasonMix(plantRoot);
+          vec2 seasonMatch = 1.-step(vec2(.5),abs(season.xy-vec2(${seasonIndex.toFixed(1)})));
+          float growth = smoothstep(.40,.99,mix(seasonMatch.x,seasonMatch.y,season.z));
+          ${fade ? 'vPlantGrowth = growth;' : ''}
+          ${wind ? `
+            float gust = sin(flowerTime * .92 + dot(plantRoot, vec2(.8, .65)));
             float height = max(mvPosition.y, 0.0);
-            mvPosition.xz += vec2(gust, .65 * sin(flowerTime * .70 + root.y))
+            mvPosition.xz += vec2(gust, .65 * sin(flowerTime * .70 + plantRoot.y))
               * height * height * .29;
           ` : ''}
-          vec3 anchor = vec3(flowerRoot.x,0.,flowerRoot.y);
+          vec3 anchor = vec3(plantRoot.x,0.,plantRoot.y);
           mvPosition.xyz = mix(anchor,mvPosition.xyz,growth);
           mvPosition = modelViewMatrix * mvPosition;
         `));
+      if(fade){
+        shader.fragmentShader='varying float vPlantGrowth;\n'+shader.fragmentShader;
+        shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>',`
+          #include <color_fragment>
+          diffuseColor.a *= vPlantGrowth * vPlantGrowth;
+        `);
+      }
     };
   }
+  const springStem=plantMaterial(0x42742e);
+  const petalMaterial=plantMaterial(0xffffff);
+  const centerMaterial=plantMaterial(0xe1b850);
+  for(const material of [springStem,petalMaterial,centerMaterial])followSeason(material,0,windTime);
   const flowerCount=142;
   const stems=new T.InstancedMesh(new T.CylinderGeometry(1,1,1,5),springStem,flowerCount);
   const petals=new T.InstancedMesh(new T.SphereGeometry(1,6,4),petalMaterial,flowerCount*6);
@@ -58,27 +69,34 @@ export function createMeadowGarden(world, random, windTime, snowman, seasonCycle
     dummy.position.set(x,height+.006,z);dummy.scale.setScalar(1);dummy.updateMatrix();centers.setMatrixAt(i,dummy.matrix);
   }
   const flowerRoots=new T.InstancedBufferAttribute(roots,2);
-  stems.geometry.setAttribute('flowerRoot',flowerRoots);
-  centers.geometry.setAttribute('flowerRoot',flowerRoots);
-  petals.geometry.setAttribute('flowerRoot',new T.InstancedBufferAttribute(petalRoots,2));
+  stems.geometry.setAttribute('plantRoot',flowerRoots);
+  centers.geometry.setAttribute('plantRoot',flowerRoots);
+  petals.geometry.setAttribute('plantRoot',new T.InstancedBufferAttribute(petalRoots,2));
   group.add(stems,petals,centers);
-  const summerStem=mat(0x49753b,summerMaterials);
+  const summerStem=plantMaterial(0x49753b);
   const puffStemCount=48;
   const puffStems=new T.InstancedMesh(new T.CylinderGeometry(1,1,1,5),summerStem,puffStemCount);
-  const strands=[],tips=[];
+  const puffRoots=new Float32Array(puffStemCount*2);
+  const strands=[],tips=[],strandRoots=[],tipRoots=[];
   for(let i=0;i<puffStemCount;i++){
     const [x,z]=position(),height=.27+random()*.13;
+    puffRoots.set([x,z],i*2);
     dummy.position.set(x,height/2,z);dummy.rotation.set(0,0,0);dummy.scale.set(.005,height,.005);dummy.updateMatrix();puffStems.setMatrixAt(i,dummy.matrix);
     for(let k=0;k<34;k++){
       const a=k*2.39996,h=1-2*(k+.5)/34,r=.057;
       const end=[x+Math.cos(a)*Math.sqrt(1-h*h)*r,height+h*r,z+Math.sin(a)*Math.sqrt(1-h*h)*r];
       strands.push(x,height,z,...end);tips.push(...end);
+      strandRoots.push(x,z,x,z);tipRoots.push(x,z);
     }
   }
-  const strandsMaterial=new T.LineBasicMaterial({color:0xf1eee0,transparent:true,opacity:.5,depthWrite:false});
+  const strandsMaterial=new T.LineBasicMaterial({color:0xf1eee0,transparent:true,opacity:.46,depthWrite:false});
   const tipsMaterial=new T.PointsMaterial({color:0xfffaeb,size:.017,transparent:true,opacity:.65,depthWrite:false});
   const strandGeometry=new T.BufferGeometry();strandGeometry.setAttribute('position',new T.Float32BufferAttribute(strands,3));
   const tipsGeometry=new T.BufferGeometry();tipsGeometry.setAttribute('position',new T.Float32BufferAttribute(tips,3));
+  puffStems.geometry.setAttribute('plantRoot',new T.InstancedBufferAttribute(puffRoots,2));
+  strandGeometry.setAttribute('plantRoot',new T.Float32BufferAttribute(strandRoots,2));
+  tipsGeometry.setAttribute('plantRoot',new T.Float32BufferAttribute(tipRoots,2));
+  for(const material of [summerStem,strandsMaterial,tipsMaterial])followSeason(material,1);
   const puffLines=new T.LineSegments(strandGeometry,strandsMaterial),puffTips=new T.Points(tipsGeometry,tipsMaterial);
   group.add(puffStems,puffLines,puffTips);
   // A few loose stands of wheat, leaving the bench and cats clear.
@@ -171,7 +189,7 @@ export function createMeadowGarden(world, random, windTime, snowman, seasonCycle
     const angle=T.MathUtils.euclideanModulo(Math.atan2(z,x)/(Math.PI*2),1);
     return {cluster,paints:[...papers,ribbon],angle};
   });
-  return {update(time,weights,cycle){
+  return {update(time,cycle){
     for(const {cluster,paints,angle} of winterGifts){
       const winter=T.MathUtils.euclideanModulo(cycle-angle,4);
       const opacity=T.MathUtils.smoothstep(winter,3,3.10)*
@@ -193,8 +211,5 @@ export function createMeadowGarden(world, random, windTime, snowman, seasonCycle
       stemPaint.depthWrite=grainPaint.depthWrite=opacity>.95;
       patch.rotation.z=.06+.065*Math.sin(time*1.45+angle*8);
     }
-    for(const m of summerMaterials){m.opacity=weights[1];m.depthWrite=weights[1]>.95;}
-    for(const object of [puffStems,puffLines,puffTips])object.visible=weights[1]>.01;
-    strandsMaterial.opacity=weights[1]*.46;tipsMaterial.opacity=weights[1]*.65;
   }};
 }
