@@ -227,7 +227,7 @@ export function createSeasonalTree(world, random) {
     nest.position.set(Math.cos(angle)*radius,.52 + tier*.29 - .028,Math.sin(angle)*radius);
     nest.rotation.y = Math.PI / 2 - angle;
     winter.add(nest);
-    const revealStart=.44+tier*.034+(branchIndex%3)*.026;
+    const revealStart=.40+tier*.038+(branchIndex%3)*.033;
     ornamentNests.push({nest,revealStart});
     return nest;
   }
@@ -304,6 +304,23 @@ export function createSeasonalTree(world, random) {
     ball(candyRed,0,.060,.107,.009);
   }
   const leafColor = new T.Color(), baseColor = new T.Color();
+  // Each nest fades independently, so shared ribbon and candy materials cannot pop in together.
+  for(const ornament of ornamentNests){
+    const paints=new Map();
+    ornament.nest.traverse(object=>{
+      if(!object.isMesh)return;
+      const original=object.material;
+      if(!paints.has(original)){
+        const paint=original.clone();
+        paint.transparent=true;
+        paint.depthWrite=false;
+        paints.set(original,paint);
+      }
+      object.material=paints.get(original);
+    });
+    ornament.paints=[...paints.values()];
+    ornament.restY=ornament.nest.position.y;
+  }
   const springColor = new T.Color(0x81b749), summerColor = new T.Color(0x357537), autumnColor = new T.Color(0xba7932);
   let lastSeasonMix = -1, lastPrevious = -1;
   function opacity(list, alpha) {
@@ -333,10 +350,12 @@ export function createSeasonalTree(world, random) {
       const ornaments = thawing ? 1 - T.MathUtils.smoothstep(thaw,.04,.40)
         : freezing ? T.MathUtils.smoothstep(f,.36,.87) : winterWeight;
 
-      for(const {nest,revealStart} of ornamentNests){
-        const reveal=freezing ? T.MathUtils.smoothstep(f,revealStart,revealStart+.26) : ornaments;
+      for(const {nest,revealStart,paints,restY} of ornamentNests){
+        const reveal=freezing ? T.MathUtils.smoothstep(f,revealStart,revealStart+.30) : ornaments;
         nest.visible=reveal>.003;
-        nest.scale.setScalar(reveal);
+        nest.scale.setScalar(.92+.08*reveal);
+        nest.position.y=restY+.028*(1-reveal);
+        for(const paint of paints)paint.opacity=reveal;
       }
 
       opacity(summerMaterials, newLeaves);
