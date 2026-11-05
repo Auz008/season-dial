@@ -1,5 +1,5 @@
 import * as T from './vendor/three.module.js';
-import { createSeasonalEffects } from './effects.js?v=parked-sleigh-1';
+import { createSeasonalEffects } from './effects.js?v=gilded-sleigh-1';
 import { createSeasonalTree } from './tree.js?v=winter-still-1';
 import { createMeadowGarden } from './meadow.js?v=meadow-sweep-1';
 import { installWallpaper } from './wallpaper.js?v=seated-cats-1';
@@ -302,61 +302,6 @@ function summerHat(){
   return hat;
 }
 
-function winterHat(dark){
-  const hat=new T.Group();
-  hat.visible=false;
-  hat.position.set(0,.040,-.008);
-  const color=dark?0x31584d:0xa33743;
-  const knit=new T.MeshStandardMaterial({
-    color,bumpMap:scarfWeave,bumpScale:.0015,roughness:.94,transparent:true,
-  });
-  const cuffPaint=knit.clone();
-  const trim=new T.MeshStandardMaterial({color:0xecdcc9,roughness:.95,transparent:true});
-  function ribbedLathe(profile,ribDepth){
-    const geometry=new T.LatheGeometry(profile.map(([r,y])=>new T.Vector2(r,y)),120);
-    const positions=geometry.attributes.position;
-    for(let i=0;i<positions.count;i++){
-      const x=positions.getX(i), z=positions.getZ(i);
-      const rib=1+ribDepth*Math.cos(Math.atan2(x,z)*40);
-      positions.setX(i,x*rib);
-      positions.setZ(i,z*rib*.89);
-    }
-    geometry.computeVertexNormals();
-    return geometry;
-  }
-  const crown=ribbedLathe([
-    [.130,.020],[.137,.043],[.133,.071],[.121,.100],[.101,.128],
-    [.075,.150],[.042,.163],[0,.167],
-  ],.014);
-  knit.side=T.DoubleSide;
-  knit.onBeforeCompile=shader=>{
-    shader.vertexShader='varying vec3 vKnitPosition;\n'+shader.vertexShader;
-    shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>',
-      '#include <begin_vertex>\nvKnitPosition = position;');
-    shader.fragmentShader='varying vec3 vKnitPosition;\n'+shader.fragmentShader;
-    shader.fragmentShader=shader.fragmentShader.replace('#include <clipping_planes_fragment>',`
-      #include <clipping_planes_fragment>
-      // Open the crown around the full base of each ear, keeping the cuff below it.
-      vec2 earHole = vec2((vKnitPosition.z-.012)/.050,(vKnitPosition.y-.101)/.076);
-      if(abs(vKnitPosition.x)>.043 && dot(earHole,earHole)<1.) discard;
-    `);
-  };
-  hat.add(new T.Mesh(crown,knit));
-  const cuff=ribbedLathe([
-    [.131,-.010],[.143,-.007],[.147,.002],[.147,.025],[.140,.033],[.130,.031],
-  ],.028);
-  hat.add(new T.Mesh(cuff,cuffPaint));
-  // A small snowflake stitched into the back of the folded cuff.
-  for(let i=0;i<3;i++){
-    const angle=i*Math.PI/3;
-    const stitch=new T.Mesh(new T.CapsuleGeometry(.0014,.022,2,5),trim);
-    stitch.position.set(0,.012,-.133);
-    stitch.rotation.z=angle;
-    hat.add(stitch);
-  }
-  return {hat,paints:[knit,cuffPaint,trim]};
-}
-
 function updateWinterScarves(time,cycle){
   cats.forEach(({scarf,angle},index)=>{
     const autumn=T.MathUtils.euclideanModulo(cycle-angle-2,4);
@@ -530,23 +475,52 @@ function cat(dark){
     new T.Vector3(outside*.219,.031,.034),
     new T.Vector3(outside*.174,.035,.068),
   ]);
-  const tailGeometry=new T.TubeGeometry(curl,28,isFur?.035:.028,9,false);
+  const tailRadius=isFur?.049:.044;
+  const tailRings=36, tailSides=12;
+  const tailGeometry=new T.TubeGeometry(curl,tailRings,tailRadius,tailSides,false);
   const positions=tailGeometry.attributes.position;
   const point=new T.Vector3();
-  for(let ring=0;ring<=28;ring++){
-    const fraction=ring/28;
+  const furPositions=[],furColors=[];
+  const radial=new T.Vector3(),tip=new T.Vector3(),bend=new T.Vector3();
+  const furColor=new T.Color();
+  const furHighlight=new T.Color(dark?0x8494b8:0xf2eee2);
+  for(let ring=0;ring<=tailRings;ring++){
+    const fraction=ring/tailRings;
     const center=curl.getPointAt(fraction);
-    const taper=1-.94*fraction**1.3;
-    for(let side=0;side<=9;side++){
-      const vertex=ring*10+side;
+    const taper=(.84+.23*Math.sin(Math.PI*fraction))*
+      (1-.97*T.MathUtils.smoothstep(fraction,.71,1));
+    for(let side=0;side<=tailSides;side++){
+      const vertex=ring*(tailSides+1)+side;
       point.fromBufferAttribute(positions,vertex).sub(center).multiplyScalar(taper).add(center);
       positions.setXYZ(vertex,point.x,point.y,point.z);
+    }
+    if(ring===tailRings)continue;
+    const tangent=tailGeometry.tangents[ring];
+    for(let strand=0;strand<20;strand++){
+      const angle=(strand*.05+ring*.382)*TAU;
+      const variation=(strand*.618+ring*.271)%1;
+      radial.copy(tailGeometry.normals[ring]).multiplyScalar(Math.cos(angle))
+        .addScaledVector(tailGeometry.binormals[ring],Math.sin(angle));
+      point.copy(center).addScaledVector(radial,tailRadius*taper*.99)
+        .addScaledVector(tangent,(variation-.5)*.012);
+      const length=(.010+variation*.020)*Math.sqrt(taper);
+      bend.copy(point).addScaledVector(radial,length*.62).addScaledVector(tangent,length*.48);
+      tip.copy(bend).addScaledVector(radial,length*.18).addScaledVector(tangent,length*.60);
+      furPositions.push(...point.toArray(),...bend.toArray(),...bend.toArray(),...tip.toArray());
+      furColor.copy(coat.color).lerp(furHighlight,.22+variation*.46);
+      furColors.push(...furColor.toArray(),...furColor.toArray(),...furColor.toArray(),...furColor.toArray());
     }
   }
   tailGeometry.computeVertexNormals();
   const tail=new T.Mesh(tailGeometry,coat);
   tail.castShadow=true;
-  body.add(tail);
+  const furGeometry=new T.BufferGeometry();
+  furGeometry.setAttribute('position',new T.Float32BufferAttribute(furPositions,3));
+  furGeometry.setAttribute('color',new T.Float32BufferAttribute(furColors,3));
+  const fur=new T.LineSegments(furGeometry,new T.LineBasicMaterial({
+    vertexColors:true,transparent:true,opacity:.68,depthWrite:false,
+  }));
+  body.add(tail,fur);
 
   group.scale.setScalar(.84);
   group.position.set(dark?.84:.52,.040,2.4);
@@ -700,11 +674,6 @@ const cats=[cat(false),cat(true)].map(cat=>{
 });
 const whiteCatHat=summerHat();
 cats[0].head.add(whiteCatHat);
-const winterHats=cats.map(({head,angle},index)=>{
-  const winter=winterHat(index===1);
-  head.add(winter.hat);
-  return {...winter,angle};
-});
 uniforms.uCatA.value.set(cats[0].group.position.x,cats[0].group.position.z);
 uniforms.uCatB.value.set(cats[1].group.position.x,cats[1].group.position.z);
 const secondsPerSeason=15;
@@ -781,13 +750,6 @@ function renderFrame(time,seasonCycle,openingAngle=0){
     (1-T.MathUtils.smoothstep(summerProgress,.88,1));
   whiteCatHat.visible=hatOpacity>0;
   whiteCatHat.children.forEach(mesh=>{mesh.material.opacity=hatOpacity;});
-  for(const {hat,paints,angle} of winterHats){
-    const progress=T.MathUtils.euclideanModulo(seasonCycle-angle-3,4);
-    const opacity=T.MathUtils.smoothstep(progress,0,.026)*
-      (1-T.MathUtils.smoothstep(progress,1,1.026));
-    hat.visible=opacity>0;
-    for(const paint of paints)paint.opacity=opacity;
-  }
   const handAngle=(seasonCycle%1)*TAU+openingAngle;
   hand.rotation.y=-handAngle;
   uniforms.uHandDirection.value.set(Math.cos(handAngle),Math.sin(handAngle));

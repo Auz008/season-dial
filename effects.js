@@ -5,14 +5,17 @@ const winterFlightStart = 1 / 3;
 function createParkedSleigh(world, secondsPerSeason) {
   const sleigh = new T.Group();
   sleigh.name = 'Parked Christmas sleigh';
-  sleigh.position.set(-1.8, .077, 2.94);
+  sleigh.position.set(-1.37, .077, 2.94);
   sleigh.rotation.y = .55;
   sleigh.visible = false;
   world.add(sleigh);
 
   const wood = new T.MeshStandardMaterial({color:0x593123, roughness:.68, transparent:true});
-  const brass = new T.MeshStandardMaterial({color:0xd2a35d, metalness:.62, roughness:.36, transparent:true});
+  const brass = new T.MeshStandardMaterial({color:0xe4b76b, metalness:.55, roughness:.30, transparent:true});
   const velvet = new T.MeshStandardMaterial({color:0x7f2234, roughness:.94, transparent:true});
+  const lanternGlass = new T.MeshStandardMaterial({
+    color:0xffcf82, emissive:0xffad52, emissiveIntensity:1.5, roughness:.38, transparent:true,
+  });
   function add(geometry, material, x=0, y=0, z=0) {
     const mesh = new T.Mesh(geometry, material);
     mesh.position.set(x,y,z);
@@ -33,13 +36,28 @@ function createParkedSleigh(world, secondsPerSeason) {
   const panel = new T.ExtrudeGeometry(shell,{
     depth:.023,bevelEnabled:true,bevelSize:.012,bevelThickness:.010,bevelSegments:2,curveSegments:10,
   });
+  const leaf = new T.SphereGeometry(1,10,6);
   for(const side of [-1,1]){
     const z=side*.166;
     add(panel,wood,0,0,z-.0115);
-    rail([[-.39,.40],[-.26,.37],[-.10,.25],[.13,.24],[.37,.29]],z,.009);
-    rail([[-.42,.026],[-.27,.014],[.20,.014],[.39,.039],[.48,.13],[.46,.23],[.39,.24],[.37,.19]],z,.014);
+    const outside=side*.190;
+    rail([[-.39,.40],[-.26,.37],[-.10,.25],[.13,.24],[.37,.29]],z,.013);
+    rail([[-.36,.27],[-.27,.169],[-.07,.134],[.19,.137],[.29,.16]],outside,.006);
+    rail([[-.42,.026],[-.27,.014],[.20,.014],[.39,.039],[.48,.13],
+      [.46,.23],[.39,.24],[.36,.19],[.40,.16],[.426,.185]],z,.014);
+    rail([[.30,.045],[.375,.080],[.387,.119],[.35,.132],[.324,.107]],z,.009);
     rail([[-.25,.027],[-.20,.119]],z,.012);
     rail([[.20,.025],[.16,.118]],z,.012);
+    rail([[-.29,.245],[-.19,.191],[-.05,.173],[.10,.177],[.23,.217]],outside,.007);
+    for(let i=0;i<7;i++){
+      const x=-.25+i*.068;
+      const y=.174+.052*((i-3.6)/3.6)**2;
+      for(const direction of [-1,1]){
+        const gilding=add(leaf,brass,x-.012,y+direction*.015,outside);
+        gilding.scale.set(.029,.009,.004);
+        gilding.rotation.z=-direction*.62;
+      }
+    }
   }
   add(new T.BoxGeometry(.49,.038,.31),wood,-.014,.139);
   const seat=add(new T.SphereGeometry(1,20,10),velvet,-.05,.172);
@@ -47,6 +65,16 @@ function createParkedSleigh(world, secondsPerSeason) {
   const back=add(new T.SphereGeometry(1,20,10),velvet,-.277,.265);
   back.scale.set(.040,.141,.150);
   back.rotation.z=.27;
+  const lanternX=.31,lanternZ=.124;
+  add(new T.CylinderGeometry(.010,.013,.094,10),brass,lanternX,.319,lanternZ);
+  add(new T.CylinderGeometry(.029,.024,.061,6),lanternGlass,lanternX,.388,lanternZ);
+  add(new T.CylinderGeometry(.032,.029,.009,6),brass,lanternX,.353,lanternZ);
+  add(new T.ConeGeometry(.039,.033,6),brass,lanternX,.433,lanternZ);
+  for(let i=0;i<6;i++){
+    const angle=i*Math.PI/3;
+    add(new T.CylinderGeometry(.003,.003,.067,6),brass,
+      lanternX+Math.sin(angle)*.027,.388,lanternZ+Math.cos(angle)*.027);
+  }
 
   const angle = T.MathUtils.euclideanModulo(Math.atan2(sleigh.position.z,sleigh.position.x)/(2*Math.PI),1);
   const winterArrival = angle-1;
@@ -59,7 +87,7 @@ function createParkedSleigh(world, secondsPerSeason) {
         : T.MathUtils.smoothstep(sinceWinter,winterArrival,winterArrival+.035)
           * (1-T.MathUtils.smoothstep(sinceWinter,departure-.025,departure));
       sleigh.visible = opacity>0;
-      for(const paint of [wood,brass,velvet]){
+      for(const paint of [wood,brass,velvet,lanternGlass]){
         paint.opacity=opacity;
         paint.depthWrite=opacity>.95;
       }
