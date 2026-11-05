@@ -219,6 +219,7 @@ export function createSeasonalTree(world, random) {
   const candyWhite=material(0xf6f0e5,winterMaterials,{roughness:.35});
   const candyRed=material(0xb92e3d,winterMaterials,{roughness:.35});
   const candyCurve=new T.CatmullRomCurve3([new T.Vector3(0,0,0),new T.Vector3(0,.20,0),new T.Vector3(0,.33,0),new T.Vector3(.025,.39,0),new T.Vector3(.085,.405,0),new T.Vector3(.135,.37,0),new T.Vector3(.14,.32,0)]);
+  const ornamentNests=[];
   function nestOrnament(tier, branchIndex) {
     const angle = branchIndex / (13 - tier) * Math.PI * 2 + tier * .46;
     const radius = .96 * (1 - tier / 8.2) * .96 + .12;
@@ -226,6 +227,8 @@ export function createSeasonalTree(world, random) {
     nest.position.set(Math.cos(angle)*radius,.52 + tier*.29 - .028,Math.sin(angle)*radius);
     nest.rotation.y = Math.PI / 2 - angle;
     winter.add(nest);
+    const revealStart=.44+tier*.034+(branchIndex%3)*.026;
+    ornamentNests.push({nest,revealStart});
     return nest;
   }
   const caneBranches = [[1,1],[2,3],[4,8],[5,1]];
@@ -328,7 +331,13 @@ export function createSeasonalTree(world, random) {
       const flowers = thawing ? T.MathUtils.smoothstep(thaw,.60,.99)
         : previous === 0 && next === 1 ? 1 - T.MathUtils.smoothstep(f,.12,.65) : weights[0];
       const ornaments = thawing ? 1 - T.MathUtils.smoothstep(thaw,.04,.40)
-        : freezing ? T.MathUtils.smoothstep(f,.71,.99) : winterWeight;
+        : freezing ? T.MathUtils.smoothstep(f,.36,.87) : winterWeight;
+
+      for(const {nest,revealStart} of ornamentNests){
+        const reveal=freezing ? T.MathUtils.smoothstep(f,revealStart,revealStart+.26) : ornaments;
+        nest.visible=reveal>.003;
+        nest.scale.setScalar(reveal);
+      }
 
       opacity(summerMaterials, newLeaves);
       opacity(winterMaterials, ornaments);

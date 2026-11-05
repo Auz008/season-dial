@@ -5,17 +5,20 @@ const winterFlightStart = 1 / 3;
 function createParkedSleigh(world, secondsPerSeason) {
   const sleigh = new T.Group();
   sleigh.name = 'Parked Christmas sleigh';
-  sleigh.position.set(-1.37, .077, 2.94);
+  sleigh.position.set(-1.60, .077, 2.65);
   sleigh.rotation.y = .55;
   sleigh.visible = false;
   world.add(sleigh);
 
-  const wood = new T.MeshStandardMaterial({color:0x593123, roughness:.68, transparent:true});
-  const brass = new T.MeshStandardMaterial({color:0xe4b76b, metalness:.55, roughness:.30, transparent:true});
-  const velvet = new T.MeshStandardMaterial({color:0x7f2234, roughness:.94, transparent:true});
+  const lacquer = new T.MeshStandardMaterial({color:0xce2438, roughness:.46, transparent:true});
+  const brass = new T.MeshStandardMaterial({color:0xffcd70, metalness:.48, roughness:.28, transparent:true});
+  const velvet = new T.MeshStandardMaterial({color:0xa42b46, roughness:.94, transparent:true});
+  const emerald = new T.MeshStandardMaterial({color:0x188963, roughness:.58, transparent:true});
+  const ivory = new T.MeshStandardMaterial({color:0xffe3a1, roughness:.60, transparent:true});
   const lanternGlass = new T.MeshStandardMaterial({
     color:0xffcf82, emissive:0xffad52, emissiveIntensity:1.5, roughness:.38, transparent:true,
   });
+  const paints=[lacquer,brass,velvet,emerald,ivory,lanternGlass];
   function add(geometry, material, x=0, y=0, z=0) {
     const mesh = new T.Mesh(geometry, material);
     mesh.position.set(x,y,z);
@@ -39,7 +42,7 @@ function createParkedSleigh(world, secondsPerSeason) {
   const leaf = new T.SphereGeometry(1,10,6);
   for(const side of [-1,1]){
     const z=side*.166;
-    add(panel,wood,0,0,z-.0115);
+    add(panel,lacquer,0,0,z-.0115);
     const outside=side*.190;
     rail([[-.39,.40],[-.26,.37],[-.10,.25],[.13,.24],[.37,.29]],z,.013);
     rail([[-.36,.27],[-.27,.169],[-.07,.134],[.19,.137],[.29,.16]],outside,.006);
@@ -49,6 +52,10 @@ function createParkedSleigh(world, secondsPerSeason) {
     rail([[-.25,.027],[-.20,.119]],z,.012);
     rail([[.20,.025],[.16,.118]],z,.012);
     rail([[-.29,.245],[-.19,.191],[-.05,.173],[.10,.177],[.23,.217]],outside,.007);
+    rail([[-.30,.365],[-.30,.318]],outside,.004);
+    add(new T.SphereGeometry(.020,10,8),emerald,-.30,.302,outside);
+    rail([[.242,.260],[.242,.231]],outside,.004);
+    add(new T.SphereGeometry(.014,10,8),ivory,.242,.222,outside);
     for(let i=0;i<7;i++){
       const x=-.25+i*.068;
       const y=.174+.052*((i-3.6)/3.6)**2;
@@ -59,12 +66,27 @@ function createParkedSleigh(world, secondsPerSeason) {
       }
     }
   }
-  add(new T.BoxGeometry(.49,.038,.31),wood,-.014,.139);
+  add(new T.BoxGeometry(.49,.038,.31),lacquer,-.014,.139);
   const seat=add(new T.SphereGeometry(1,20,10),velvet,-.05,.172);
   seat.scale.set(.244,.038,.148);
   const back=add(new T.SphereGeometry(1,20,10),velvet,-.277,.265);
   back.scale.set(.040,.141,.150);
   back.rotation.z=.27;
+  for(const [x,z,width,height,wrap,ribbon] of [
+    [-.154,-.056,.139,.171,emerald,brass],
+    [-.022,.052,.124,.118,ivory,lacquer],
+    [.105,-.053,.105,.100,lacquer,ivory],
+  ]){
+    const base=.184;
+    const depth=width*.87;
+    add(new T.BoxGeometry(width,height,depth),wrap,x,base+height/2,z);
+    add(new T.BoxGeometry(.019,height+.005,depth+.004),ribbon,x,base+height/2,z);
+    add(new T.BoxGeometry(width+.004,height+.005,.017),ribbon,x,base+height/2,z);
+    for(const side of [-1,1]){
+      const loop=add(new T.TorusGeometry(.014,.0035,6,12),ribbon,x+side*.014,base+height+.012,z);
+      loop.rotation.z=side*.33;
+    }
+  }
   const lanternX=.31,lanternZ=.124;
   add(new T.CylinderGeometry(.010,.013,.094,10),brass,lanternX,.319,lanternZ);
   add(new T.CylinderGeometry(.029,.024,.061,6),lanternGlass,lanternX,.388,lanternZ);
@@ -87,7 +109,7 @@ function createParkedSleigh(world, secondsPerSeason) {
         : T.MathUtils.smoothstep(sinceWinter,winterArrival,winterArrival+.035)
           * (1-T.MathUtils.smoothstep(sinceWinter,departure-.025,departure));
       sleigh.visible = opacity>0;
-      for(const paint of [wood,brass,velvet,lanternGlass]){
+      for(const paint of paints){
         paint.opacity=opacity;
         paint.depthWrite=opacity>.95;
       }
