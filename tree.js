@@ -247,21 +247,53 @@ export function createSeasonalTree(world, random) {
   }
   const ribbonMaterial=material(0xe6d2a0,winterMaterials,{metalness:.35,roughness:.4});
   const giftBranches = [[1,3],[2,9],[3,9],[4,0]];
-  const giftColors=[0xad4652,0x4e8b7d,0xc19a5a,0x716082];
+  const giftColors=[0xc43c51,0x318e78,0xd4a64c,0x775399];
   for(let i=0;i<4;i++){
-    const wrap=material(giftColors[i],winterMaterials,{roughness:.55});
+    const wrap=material(giftColors[i],winterMaterials,{roughness:.63});
+    const lidPaint=wrap.clone();
+    lidPaint.color.lerp(new T.Color(0xffedcc),.16);
+    winterMaterials.push(lidPaint);
     const present=new T.Group();
     const width=.24+i%2*.055,height=.21+(i%3)*.035,depth=.23;
-    const box=new T.Mesh(new T.BoxGeometry(width,height,depth),wrap);box.position.y=height/2;box.castShadow=true;present.add(box);
-    const lid=new T.Mesh(new T.BoxGeometry(width+.025,.035,depth+.025),wrap);lid.position.y=height+.012;present.add(lid);
-    for(const [w,h,d] of [[.033,height+.05,depth+.03],[width+.03,height+.05,.033]]){const band=new T.Mesh(new T.BoxGeometry(w,h,d),ribbonMaterial);band.position.y=height/2+.006;present.add(band);}
-    for(const side of [-1,1]){const bow=new T.Mesh(new T.TorusGeometry(.043,.010,6,16),ribbonMaterial);bow.position.set(side*.039,height+.052,0);bow.rotation.x=Math.PI/2;bow.rotation.y=side*.38;bow.scale.set(1.05,.70,1);present.add(bow);}
+    const part=(geometry,paint,x,y,z)=>{
+      const mesh=new T.Mesh(geometry,paint);
+      mesh.position.set(x,y,z);
+      present.add(mesh);
+      return mesh;
+    };
+    part(new T.BoxGeometry(width,height,depth),wrap,0,height/2,0);
+    const lidTop=height+.036;
+    part(new T.BoxGeometry(width+.024,.036,depth+.024),lidPaint,0,height+.018,0);
+    // Surface strips leave the paper and the separate lid visible between the ribbons.
+    for(const side of [-1,1]){
+      part(new T.BoxGeometry(.030,height,.004),ribbonMaterial,0,height/2,side*(depth/2+.003));
+      part(new T.BoxGeometry(.004,height,.030),ribbonMaterial,side*(width/2+.003),height/2,0);
+      part(new T.BoxGeometry(.032,.036,.004),ribbonMaterial,0,height+.018,side*(depth/2+.015));
+      part(new T.BoxGeometry(.004,.036,.032),ribbonMaterial,side*(width/2+.015),height+.018,0);
+    }
+    part(new T.BoxGeometry(.032,.004,depth+.026),ribbonMaterial,0,lidTop+.002,0);
+    part(new T.BoxGeometry(width+.026,.004,.032),ribbonMaterial,0,lidTop+.002,0);
+    for(const side of [-1,1]){
+      const loop=new T.CatmullRomCurve3([
+        new T.Vector3(0,lidTop+.010,0),
+        new T.Vector3(side*.033,lidTop+.053,-.020),
+        new T.Vector3(side*.071,lidTop+.051,.002),
+        new T.Vector3(side*.059,lidTop+.022,.027),
+        new T.Vector3(0,lidTop+.010,0),
+      ]);
+      present.add(new T.Mesh(new T.TubeGeometry(loop,22,.009,7,false),ribbonMaterial));
+      const tail=part(new T.BoxGeometry(.026,.073,.006),ribbonMaterial,
+        side*.025,height+.005,depth/2+.023);
+      tail.rotation.z=side*.26;
+    }
+    const knot=part(new T.SphereGeometry(1,10,8),ribbonMaterial,0,lidTop+.018,.003);
+    knot.scale.set(.020,.014,.016);
 
     const [tier, branchIndex] = giftBranches[i];
     const nest = nestOrnament(tier,branchIndex);
-    present.scale.setScalar(.58);
-    present.position.set(0,-height*.28,.045);
-    present.rotation.set(.13,.22,-.13);
+    present.scale.setScalar(.64);
+    present.position.set(0,-height*.28,.085);
+    present.rotation.set(.10,.22,-.10);
     nest.add(present);
   }
 
@@ -355,7 +387,11 @@ export function createSeasonalTree(world, random) {
         nest.visible=reveal>.003;
         nest.scale.setScalar(.92+.08*reveal);
         nest.position.y=restY+.028*(1-reveal);
-        for(const paint of paints)paint.opacity=reveal;
+        for(const paint of paints){
+          paint.opacity=reveal;
+          paint.transparent=reveal<.999;
+          paint.depthWrite=reveal>=.999;
+        }
       }
 
       opacity(summerMaterials, newLeaves);

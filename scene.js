@@ -1,6 +1,6 @@
 import * as T from './vendor/three.module.js';
 import { createSeasonalEffects } from './effects.js?v=apple-harvest-1';
-import { createSeasonalTree } from './tree.js?v=ornament-reveal-2';
+import { createSeasonalTree } from './tree.js?v=complete-gifts-1';
 import { createMeadowGarden } from './meadow.js?v=apple-harvest-1';
 import { installWallpaper } from './wallpaper.js?v=seated-cats-1';
 
