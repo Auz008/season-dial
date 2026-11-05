@@ -670,7 +670,8 @@ const nebula=new T.Mesh(new T.PlaneGeometry(60,30),new T.MeshBasicMaterial({map:
 
 let capturing=false;
 const springCycle=1;
-const springOpeningSeconds=1.5;
+const springOpeningSeconds=1.15;
+const springOpeningArc=.72;
 let azimuth=0,elevation=.63,distance=14.5,playing=true,speed=1,cycle=fixedCycle ?? springCycle,elapsed=0,last=performance.now(),pointer=null;
 function view(){camera.position.set(Math.sin(azimuth)*Math.cos(elevation)*distance,Math.sin(elevation)*distance,Math.cos(azimuth)*Math.cos(elevation)*distance);camera.lookAt(0,-.65,0);}
 function fitBackground(){const texture=scene.background;if(!texture?.image)return;const aspect=camera.aspect;const imageAspect=texture.image.width/texture.image.height;texture.repeat.set(Math.min(1,aspect/imageAspect),Math.min(1,imageAspect/aspect));texture.offset.set((1-texture.repeat.x)/2,(1-texture.repeat.y)/2);texture.needsUpdate=true;}
@@ -726,18 +727,27 @@ function renderFrame(time,seasonCycle,openingAngle=0){
 function animate(now){
   requestAnimationFrame(animate);const dt=Math.min((now-last)/1000,.05);last=now;
   if(capturing||document.body.classList.contains('art-mode')||document.hidden)return;
+  const previousElapsed=elapsed;
   if(playing)elapsed+=dt*speed;
   if(seasonTransition){
     const {from,to,start}=seasonTransition;
     const progress=T.MathUtils.smoothstep(now-start,0,1500);
     cycle=((T.MathUtils.lerp(from,to,progress)%4)+4)%4;
     if(progress===1)seasonTransition=null;
-  }else if(playing && !seasonStill && (cycle!==springCycle || elapsed>=springOpeningSeconds)){
-    cycle+=dt*speed/secondsPerSeason;
+  }else if(playing && !seasonStill){
+    const seasonTime=cycle===springCycle
+      ? Math.max(0,elapsed-Math.max(previousElapsed,springOpeningSeconds))
+      : elapsed-previousElapsed;
+    cycle+=seasonTime/secondsPerSeason;
   }
-  const openingAngle=!seasonStill && !seasonTransition && cycle===springCycle
-    ? -.72*(1-T.MathUtils.smoothstep(elapsed,0,1.15))
-    : 0;
+  let openingAngle=0;
+  if(!seasonStill && !seasonTransition && cycle===springCycle && elapsed<springOpeningSeconds){
+    const progress=elapsed/springOpeningSeconds;
+    // Match the hand's normal rotation speed where the opening sweep joins it.
+    const linearWeight=(TAU/secondsPerSeason)*springOpeningSeconds/springOpeningArc;
+    const sweep=T.MathUtils.lerp(T.MathUtils.smoothstep(progress,0,1),progress,linearWeight);
+    openingAngle=-springOpeningArc*(1-sweep);
+  }
   renderFrame(elapsed,cycle,openingAngle);
   timeline.value=((cycle%4)+4)%4;
   const current=((Math.floor(cycle)-(cycle%1>.5?0:1))%4+4)%4;
