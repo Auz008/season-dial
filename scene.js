@@ -117,17 +117,20 @@ const surfaceGeo=new T.PlaneGeometry(10,10,140,140);surfaceGeo.rotateX(-Math.PI/
 const greetingCanvas=document.createElement('canvas');
 greetingCanvas.width=2048;greetingCanvas.height=384;
 const greetingContext=greetingCanvas.getContext('2d');
-greetingContext.font='bold italic 180px Georgia, serif';
+greetingContext.font='200px "Snell Roundhand", "Apple Chancery", cursive';
 greetingContext.textAlign='center';
 greetingContext.textBaseline='middle';
 const greetingGold=greetingContext.createLinearGradient(0,105,0,280);
-greetingGold.addColorStop(0,'#e5ad3d');
-greetingGold.addColorStop(.32,'#ffe29a');
-greetingGold.addColorStop(.57,'#e9b440');
-greetingGold.addColorStop(1,'#b77c16');
+greetingGold.addColorStop(0,'#d8a126');
+greetingGold.addColorStop(.32,'#ffe79e');
+greetingGold.addColorStop(.57,'#f2c24c');
+greetingGold.addColorStop(1,'#b67b12');
 greetingContext.fillStyle=greetingGold;
 greetingContext.translate(1024,192);
 greetingContext.scale(1900/greetingContext.measureText('Merry Christmas').width,1);
+greetingContext.strokeStyle='#ad771b';
+greetingContext.lineWidth=1.1;
+greetingContext.strokeText('Merry Christmas',0,0);
 greetingContext.fillText('Merry Christmas',0,0);
 const greetingTexture=new T.CanvasTexture(greetingCanvas);
 greetingTexture.colorSpace=T.SRGBColorSpace;
@@ -136,8 +139,8 @@ const greetingGeometry=new T.PlaneGeometry(1,1,128,24);
 const greetingPositions=greetingGeometry.attributes.position;
 const greetingUV=greetingGeometry.attributes.uv;
 for(let i=0;i<greetingPositions.count;i++){
-  const angle=-1.36+greetingUV.getX(i)*1.22;
-  const radius=4.05+(greetingUV.getY(i)-.5)*1.50;
+  const angle=-1.48+greetingUV.getX(i)*1.45;
+  const radius=4.62+(greetingUV.getY(i)-.5)*1.20;
   greetingPositions.setXYZ(i,Math.cos(angle)*radius,0,Math.sin(angle)*radius);
 }
 greetingGeometry.computeBoundingSphere();
