@@ -121,15 +121,15 @@ greetingContext.font='200px "Snell Roundhand", "Apple Chancery", cursive';
 greetingContext.textAlign='center';
 greetingContext.textBaseline='middle';
 const greetingGold=greetingContext.createLinearGradient(0,105,0,280);
-greetingGold.addColorStop(0,'#d8a126');
-greetingGold.addColorStop(.32,'#ffe79e');
-greetingGold.addColorStop(.57,'#f2c24c');
-greetingGold.addColorStop(1,'#b67b12');
+greetingGold.addColorStop(0,'#edb300');
+greetingGold.addColorStop(.32,'#fff0a0');
+greetingGold.addColorStop(.57,'#ffd229');
+greetingGold.addColorStop(1,'#d39600');
 greetingContext.fillStyle=greetingGold;
 greetingContext.translate(1024,192);
 greetingContext.scale(1900/greetingContext.measureText('Merry Christmas').width,1);
-greetingContext.strokeStyle='#ad771b';
-greetingContext.lineWidth=1.1;
+greetingContext.strokeStyle='#c18a06';
+greetingContext.lineWidth=1.6;
 greetingContext.strokeText('Merry Christmas',0,0);
 greetingContext.fillText('Merry Christmas',0,0);
 const greetingTexture=new T.CanvasTexture(greetingCanvas);
@@ -145,7 +145,7 @@ for(let i=0;i<greetingPositions.count;i++){
 }
 greetingGeometry.computeBoundingSphere();
 const greeting=new T.Mesh(greetingGeometry,new T.ShaderMaterial({
-  transparent:true,depthWrite:false,
+  transparent:true,depthWrite:false,toneMapped:false,
   uniforms:{uCycle:uniforms.uCycle,uLetters:{value:greetingTexture}},
   vertexShader:`
     uniform float uCycle;
@@ -166,8 +166,10 @@ const greeting=new T.Mesh(greetingGeometry,new T.ShaderMaterial({
     ${seasonsGLSL}
     void main(){
       vec4 letters=texture2D(uLetters,vGreetingUV);
-      float winter=smoothstep(.35,.95,snowCover(seasonMix(vGreetingRoot)));
+      // Reveal each section only as the winter sweep reaches the snow beneath it.
+      float winter=smoothstep(.55,.99,snowCover(seasonMix(vGreetingRoot)));
       gl_FragColor=vec4(letters.rgb,letters.a*winter);
+      #include <colorspace_fragment>
     }
   `,
 }));
