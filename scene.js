@@ -1,5 +1,5 @@
 import * as T from './vendor/three.module.js';
-import { createSeasonalEffects } from './effects.js?v=opening-shadow-1';
+import { createSeasonalEffects } from './effects.js?v=parked-sleigh-1';
 import { createSeasonalTree } from './tree.js?v=winter-still-1';
 import { createMeadowGarden } from './meadow.js?v=meadow-sweep-1';
 import { installWallpaper } from './wallpaper.js?v=seated-cats-1';
@@ -305,34 +305,64 @@ function summerHat(){
 function winterHat(dark){
   const hat=new T.Group();
   hat.visible=false;
-  hat.position.set(0,.075,-.012);
+  hat.position.set(0,.040,-.008);
+  const color=dark?0x31584d:0xa33743;
   const knit=new T.MeshStandardMaterial({
-    color:dark?0x41645a:0xb8494d,bumpMap:scarfWeave,bumpScale:.003,roughness:.93,transparent:true,
+    color,bumpMap:scarfWeave,bumpScale:.0015,roughness:.94,transparent:true,
   });
-  const trim=new T.MeshStandardMaterial({
-    color:0xf1e4ce,bumpMap:scarfWeave,bumpScale:.002,roughness:.94,transparent:true,
-  });
-  const profile=[
-    [0,0],[.131,0],[.149,.016],[.151,.045],[.150,.096],
-    [.138,.136],[.110,.166],[.073,.185],[0,.195],
-  ].map(([radius,height])=>new T.Vector2(radius,height));
-  hat.add(new T.Mesh(new T.LatheGeometry(profile,32),knit));
-  const cuff=new T.Mesh(new T.TorusGeometry(.140,.014,8,32),trim);
-  cuff.rotation.x=Math.PI/2;
-  cuff.position.y=.023;
-  hat.add(cuff);
-  const pom=new T.Mesh(new T.SphereGeometry(.037,16,12),trim);
-  pom.position.set(.016,.205,-.016);
-  hat.add(pom);
-  return {hat,knit,trim};
+  const cuffPaint=knit.clone();
+  const trim=new T.MeshStandardMaterial({color:0xecdcc9,roughness:.95,transparent:true});
+  function ribbedLathe(profile,ribDepth){
+    const geometry=new T.LatheGeometry(profile.map(([r,y])=>new T.Vector2(r,y)),120);
+    const positions=geometry.attributes.position;
+    for(let i=0;i<positions.count;i++){
+      const x=positions.getX(i), z=positions.getZ(i);
+      const rib=1+ribDepth*Math.cos(Math.atan2(x,z)*40);
+      positions.setX(i,x*rib);
+      positions.setZ(i,z*rib*.89);
+    }
+    geometry.computeVertexNormals();
+    return geometry;
+  }
+  const crown=ribbedLathe([
+    [.130,.020],[.137,.043],[.133,.071],[.121,.100],[.101,.128],
+    [.075,.150],[.042,.163],[0,.167],
+  ],.014);
+  knit.side=T.DoubleSide;
+  knit.onBeforeCompile=shader=>{
+    shader.vertexShader='varying vec3 vKnitPosition;\n'+shader.vertexShader;
+    shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>',
+      '#include <begin_vertex>\nvKnitPosition = position;');
+    shader.fragmentShader='varying vec3 vKnitPosition;\n'+shader.fragmentShader;
+    shader.fragmentShader=shader.fragmentShader.replace('#include <clipping_planes_fragment>',`
+      #include <clipping_planes_fragment>
+      // Open the crown around the full base of each ear, keeping the cuff below it.
+      vec2 earHole = vec2((vKnitPosition.z-.012)/.050,(vKnitPosition.y-.101)/.076);
+      if(abs(vKnitPosition.x)>.043 && dot(earHole,earHole)<1.) discard;
+    `);
+  };
+  hat.add(new T.Mesh(crown,knit));
+  const cuff=ribbedLathe([
+    [.131,-.010],[.143,-.007],[.147,.002],[.147,.025],[.140,.033],[.130,.031],
+  ],.028);
+  hat.add(new T.Mesh(cuff,cuffPaint));
+  // A small snowflake stitched into the back of the folded cuff.
+  for(let i=0;i<3;i++){
+    const angle=i*Math.PI/3;
+    const stitch=new T.Mesh(new T.CapsuleGeometry(.0014,.022,2,5),trim);
+    stitch.position.set(0,.012,-.133);
+    stitch.rotation.z=angle;
+    hat.add(stitch);
+  }
+  return {hat,paints:[knit,cuffPaint,trim]};
 }
 
 function updateWinterScarves(time,cycle){
-  // Shift the cycle so the autumn–winter midpoint starts at zero.
-  const progress=T.MathUtils.euclideanModulo(cycle-3.5,4);
-  const opacity=T.MathUtils.smoothstep(progress,0,.12)*
-    (1-T.MathUtils.smoothstep(progress,.87,1));
-  cats.forEach(({scarf},index)=>{
+  cats.forEach(({scarf,angle},index)=>{
+    const autumn=T.MathUtils.euclideanModulo(cycle-angle-2,4);
+    const scarfEnd=2.5-angle;
+    const opacity=T.MathUtils.smoothstep(autumn,0,.055)*
+      (1-T.MathUtils.smoothstep(autumn,scarfEnd-.13,scarfEnd));
     scarf.group.visible=opacity>0;
     if(!scarf.group.visible)return;
     scarf.wool.opacity=scarf.trim.opacity=opacity;
@@ -663,12 +693,14 @@ const seasonalBenchFigures=[[benchFigures.scarecrow,2],[benchFigures.snowman,3]]
   return {figure,start,angle};
 });
 
-const cats=[cat(false),cat(true)];
+const cats=[cat(false),cat(true)].map(cat=>{
+  const {x,z}=cat.group.position;
+  const angle=T.MathUtils.euclideanModulo(Math.atan2(z,x)/TAU,1);
+  return {...cat,angle};
+});
 const whiteCatHat=summerHat();
 cats[0].head.add(whiteCatHat);
-const winterHats=cats.map(({group,head},index)=>{
-  const {x,z}=group.position;
-  const angle=T.MathUtils.euclideanModulo(Math.atan2(z,x)/TAU,1);
+const winterHats=cats.map(({head,angle},index)=>{
   const winter=winterHat(index===1);
   head.add(winter.hat);
   return {...winter,angle};
@@ -693,7 +725,7 @@ function updateNuzzle(time){
 const seasonalTree=createSeasonalTree(world,rnd);
 const meadowGarden=createMeadowGarden(world,rnd,springStill ? uniforms.uTime : null,benchFigures.snowman,uniforms.uCycle,seasonsGLSL);
 
-const effects=createSeasonalEffects({world,scene,camera,uniforms,random:rnd,springStill,summerStill,winterStill});
+const effects=createSeasonalEffects({world,scene,camera,uniforms,random:rnd,springStill,summerStill,winterStill,secondsPerSeason});
 
 const starsPos=new Float32Array(2600*3),starsColor=new Float32Array(2600*3);for(let i=0;i<2600;i++){let a=rnd()*TAU,y=rnd()*2-1,r=32;starsPos.set([Math.cos(a)*Math.sqrt(1-y*y)*r,y*r,Math.sin(a)*Math.sqrt(1-y*y)*r],i*3);const b=.15+rnd()*.6;starsColor.set([b*.8,b*.9,b],i*3);}const sg=new T.BufferGeometry();sg.setAttribute('position',new T.BufferAttribute(starsPos,3));sg.setAttribute('color',new T.BufferAttribute(starsColor,3));scene.add(new T.Points(sg,new T.PointsMaterial({size:.025,vertexColors:true,transparent:true,opacity:.75,depthWrite:false})));
 const nebulaCanvas=document.createElement('canvas');nebulaCanvas.width=1024;nebulaCanvas.height=512;const ctx=nebulaCanvas.getContext('2d');
@@ -749,12 +781,12 @@ function renderFrame(time,seasonCycle,openingAngle=0){
     (1-T.MathUtils.smoothstep(summerProgress,.88,1));
   whiteCatHat.visible=hatOpacity>0;
   whiteCatHat.children.forEach(mesh=>{mesh.material.opacity=hatOpacity;});
-  for(const {hat,knit,trim,angle} of winterHats){
+  for(const {hat,paints,angle} of winterHats){
     const progress=T.MathUtils.euclideanModulo(seasonCycle-angle-3,4);
     const opacity=T.MathUtils.smoothstep(progress,0,.026)*
       (1-T.MathUtils.smoothstep(progress,1,1.026));
     hat.visible=opacity>0;
-    knit.opacity=trim.opacity=opacity;
+    for(const paint of paints)paint.opacity=opacity;
   }
   const handAngle=(seasonCycle%1)*TAU+openingAngle;
   hand.rotation.y=-handAngle;

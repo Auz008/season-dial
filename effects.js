@@ -1,5 +1,72 @@
 import * as T from './vendor/three.module.js';
 
+const winterFlightStart = 1 / 3;
+
+function createParkedSleigh(world, secondsPerSeason) {
+  const sleigh = new T.Group();
+  sleigh.name = 'Parked Christmas sleigh';
+  sleigh.position.set(-1.8, .077, 2.94);
+  sleigh.rotation.y = .55;
+  sleigh.visible = false;
+  world.add(sleigh);
+
+  const wood = new T.MeshStandardMaterial({color:0x593123, roughness:.68, transparent:true});
+  const brass = new T.MeshStandardMaterial({color:0xd2a35d, metalness:.62, roughness:.36, transparent:true});
+  const velvet = new T.MeshStandardMaterial({color:0x7f2234, roughness:.94, transparent:true});
+  function add(geometry, material, x=0, y=0, z=0) {
+    const mesh = new T.Mesh(geometry, material);
+    mesh.position.set(x,y,z);
+    sleigh.add(mesh);
+    return mesh;
+  }
+  function rail(points, z, radius) {
+    const curve = new T.CatmullRomCurve3(points.map(([x,y])=>new T.Vector3(x,y,z)));
+    add(new T.TubeGeometry(curve,24,radius,6,false),brass);
+  }
+  const shell = new T.Shape();
+  shell.moveTo(-.39,.40);
+  shell.bezierCurveTo(-.24,.42,-.21,.25,.04,.24);
+  shell.quadraticCurveTo(.24,.23,.37,.29);
+  shell.quadraticCurveTo(.36,.13,.23,.115);
+  shell.lineTo(-.23,.115);
+  shell.quadraticCurveTo(-.36,.13,-.39,.40);
+  const panel = new T.ExtrudeGeometry(shell,{
+    depth:.023,bevelEnabled:true,bevelSize:.012,bevelThickness:.010,bevelSegments:2,curveSegments:10,
+  });
+  for(const side of [-1,1]){
+    const z=side*.166;
+    add(panel,wood,0,0,z-.0115);
+    rail([[-.39,.40],[-.26,.37],[-.10,.25],[.13,.24],[.37,.29]],z,.009);
+    rail([[-.42,.026],[-.27,.014],[.20,.014],[.39,.039],[.48,.13],[.46,.23],[.39,.24],[.37,.19]],z,.014);
+    rail([[-.25,.027],[-.20,.119]],z,.012);
+    rail([[.20,.025],[.16,.118]],z,.012);
+  }
+  add(new T.BoxGeometry(.49,.038,.31),wood,-.014,.139);
+  const seat=add(new T.SphereGeometry(1,20,10),velvet,-.05,.172);
+  seat.scale.set(.244,.038,.148);
+  const back=add(new T.SphereGeometry(1,20,10),velvet,-.277,.265);
+  back.scale.set(.040,.141,.150);
+  back.rotation.z=.27;
+
+  const angle = T.MathUtils.euclideanModulo(Math.atan2(sleigh.position.z,sleigh.position.x)/(2*Math.PI),1);
+  const winterArrival = angle-1;
+  return {
+    update(season, fixedWinter) {
+      const sinceWinter = T.MathUtils.euclideanModulo(season+1,4)-1;
+      const departure = winterFlightStart-1/secondsPerSeason;
+      // Keep the parked sleigh through the thaw until just before the sky flight.
+      const opacity = fixedWinter ? 1
+        : T.MathUtils.smoothstep(sinceWinter,winterArrival,winterArrival+.035)
+          * (1-T.MathUtils.smoothstep(sinceWinter,departure-.025,departure));
+      sleigh.visible = opacity>0;
+      for(const paint of [wood,brass,velvet]){
+        paint.opacity=opacity;
+        paint.depthWrite=opacity>.95;
+      }
+    },
+  };
+}
+
 // Miniature ornaments in camera space, with normal depth testing against the dial.
 function createWinterSleigh(sky) {
   const team = new T.Group();
@@ -191,7 +258,7 @@ function createWinterSleigh(sky) {
 
 // All four falling materials share the dial's radial season calculation.
 // Instanced quads keep the transparent image assets inexpensive on phones.
-export function createSeasonalEffects({ world, scene, camera, uniforms, random, springStill = false, summerStill = false, winterStill = false }) {
+export function createSeasonalEffects({ world, scene, camera, uniforms, random, springStill = false, summerStill = false, winterStill = false, secondsPerSeason }) {
   const loader = new T.TextureLoader();
   const resources = { loaded: 0, expected: 3, failed: [] };
   const weather = new T.Group();
@@ -448,6 +515,7 @@ export function createSeasonalEffects({ world, scene, camera, uniforms, random, 
   meteorGeometry.instanceCount = meteorSpecs.length / 4;
   const meteorCenter = new T.Vector3();
   const winterSleigh = createWinterSleigh(sky);
+  const parkedSleigh = createParkedSleigh(world,secondsPerSeason);
   const meteors = new T.Mesh(meteorGeometry, new T.ShaderMaterial({
     uniforms: { ...skyUniforms, uMeteorCenter: { value: meteorCenter } }, transparent: true, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide,
     vertexShader: `${skyProjection}
@@ -523,8 +591,9 @@ export function createSeasonalEffects({ world, scene, camera, uniforms, random, 
           * (1 - T.MathUtils.smoothstep(season, 1.5, 2));
       rain.visible = rainStrength.value > 0;
       // Cross as spring grows from one third to two thirds of the dial.
-      const flightProgress = springStill ? -1 : 3 * season - 1;
+      const flightProgress = springStill ? -1 : 3 * (season-winterFlightStart);
       winterSleigh.update(time, flightProgress, meteorCenter, camera);
+      parkedSleigh.update(season,winterStill);
       skyUniforms.uAspect.value = camera.aspect;
       skyUniforms.uTanFov.value = Math.tan(T.MathUtils.degToRad(camera.fov / 2));
       const texture = scene.background;
