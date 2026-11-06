@@ -216,7 +216,7 @@ function createBirthdayCake(angle){
   const icing=paint(0xfff8eb);
   const blue=paint(0x749cc9);
   const silver=paint(0xd9e4ec,{metalness:.32,roughness:.44});
-  const flamePaint=paint(0xffcc70,{emissive:0xffb74d,emissiveIntensity:1.2});
+  const flamePaint=paint(0xff763d,{emissive:0xff4223,emissiveIntensity:2.4});
   function part(geometry,material,x=0,y=0,z=0){
     const mesh=new T.Mesh(geometry,material);
     mesh.position.set(x,y,z);
@@ -271,7 +271,25 @@ function createBirthdayCake(angle){
   part(new T.CylinderGeometry(.012,.012,.143,12),blue,0,.657);
   part(new T.CylinderGeometry(.002,.002,.018,6),paint(0x44372e),0,.737);
   const flame=part(new T.SphereGeometry(1,12,8),flamePaint,0,.769);
-  flame.scale.set(.016,.038,.016);
+  flame.scale.set(.023,.048,.023);
+  const glowCanvas=document.createElement('canvas');
+  glowCanvas.width=glowCanvas.height=64;
+  const glowContext=glowCanvas.getContext('2d');
+  const glowGradient=glowContext.createRadialGradient(32,32,0,32,32,32);
+  glowGradient.addColorStop(0,'rgba(255,157,100,.85)');
+  glowGradient.addColorStop(.24,'rgba(255,78,45,.48)');
+  glowGradient.addColorStop(.62,'rgba(255,45,27,.12)');
+  glowGradient.addColorStop(1,'rgba(255,45,27,0)');
+  glowContext.fillStyle=glowGradient;
+  glowContext.fillRect(0,0,64,64);
+  const glowTexture=new T.CanvasTexture(glowCanvas);
+  glowTexture.colorSpace=T.SRGBColorSpace;
+  const glow=new T.Sprite(new T.SpriteMaterial({
+    map:glowTexture,transparent:true,depthWrite:false,blending:T.AdditiveBlending,toneMapped:false,
+  }));
+  glow.position.copy(flame.position);
+  glow.scale.set(.24,.28,1);
+  cake.add(glow);
   return {
     update(time,cycle){
       const local=T.MathUtils.euclideanModulo(cycle-T.MathUtils.euclideanModulo(angle/TAU,1),4);
@@ -279,9 +297,11 @@ function createBirthdayCake(angle){
         : T.MathUtils.smoothstep(local,3,3.045)*(1-T.MathUtils.smoothstep(local,3.98,4));
       cake.visible=opacity>.001;
       for(const material of paints)material.opacity=opacity;
+      const flicker=1+Math.sin(time*5.3)*.07;
+      glow.material.opacity=opacity*(.78+Math.sin(time*4.7)*.08);
       if(cake.visible){
-        flame.scale.y=.038*(1+Math.sin(time*5.3)*.07);
-        flamePaint.emissiveIntensity=1.2+Math.sin(time*4.7)*.10;
+        flame.scale.y=.048*flicker;
+        flamePaint.emissiveIntensity=2.4+Math.sin(time*4.7)*.20;
       }
     },
   };
