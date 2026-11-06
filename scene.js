@@ -215,7 +215,6 @@ function createBirthdayCake(angle){
   const cream=paint(0xffefd9);
   const icing=paint(0xfff8eb);
   const blue=paint(0x749cc9);
-  const berry=paint(0x34588b,{roughness:.52});
   const silver=paint(0xd9e4ec,{metalness:.32,roughness:.44});
   const flamePaint=paint(0xffcc70,{emissive:0xffb74d,emissiveIntensity:1.2});
   function part(geometry,material,x=0,y=0,z=0){
@@ -225,39 +224,53 @@ function createBirthdayCake(angle){
     return mesh;
   }
   part(new T.CylinderGeometry(.396,.378,.025,64),icing,0,.013);
-  const profile=[
-    [0,.026],[.300,.026],[.326,.040],[.332,.066],[.330,.274],
-    [.325,.298],[.306,.311],[0,.311],
-  ].map(([radius,height])=>new T.Vector2(radius,height));
-  part(new T.LatheGeometry(profile,64),cream);
-  part(new T.CylinderGeometry(.324,.328,.023,64),icing,0,.309);
-  const shell=new T.SphereGeometry(1,10,6);
-  for(let i=0;i<28;i++){
-    const a=i/28*TAU;
-    for(const y of [.052,.326]){
-      const dollop=part(shell,icing,Math.cos(a)*.312,y,Math.sin(a)*.312);
-      dollop.scale.set(.030,.018,.025);
-      dollop.rotation.y=-a;
+  const shell=new T.SphereGeometry(1,12,8);
+  const pearl=new T.SphereGeometry(.010,10,8);
+  const tiers=[
+    {radius:.335,base:.026,height:.214,shells:30,swags:10},
+    {radius:.245,base:.246,height:.174,shells:24,swags:8},
+    {radius:.160,base:.426,height:.143,shells:18,swags:6},
+  ];
+  for(const {radius,base,height,shells,swags} of tiers){
+    const top=base+height;
+    const profile=[
+      [0,base],[radius-.024,base],[radius-.006,base+.010],
+      [radius,base+.025],[radius,top-.025],
+      [radius-.006,top-.008],[radius-.023,top],[0,top],
+    ].map(([r,y])=>new T.Vector2(r,y));
+    part(new T.LatheGeometry(profile,64),cream);
+    part(new T.CylinderGeometry(radius-.006,radius-.010,.012,64),icing,0,top);
+    for(let i=0;i<shells;i++){
+      const a=i/shells*TAU;
+      for(const y of [base+.018,top+.009]){
+        const dollop=part(shell,icing,Math.cos(a)*(radius-.016),y,Math.sin(a)*(radius-.016));
+        dollop.scale.set(.024,.014,.019);
+        dollop.rotation.y=-a;
+      }
+    }
+    for(let i=0;i<swags;i++){
+      const points=[];
+      for(let k=0;k<=12;k++){
+        const t=k/12;
+        const a=(i+t)/swags*TAU;
+        points.push(new T.Vector3(Math.cos(a)*(radius+.002),
+          top-.049-Math.sin(t*Math.PI)*height*.25,Math.sin(a)*(radius+.002)));
+      }
+      part(new T.TubeGeometry(new T.CatmullRomCurve3(points),18,.006,6,false),blue);
+      const a=i/swags*TAU;
+      part(pearl,silver,Math.cos(a)*(radius+.004),top-.049,Math.sin(a)*(radius+.004));
     }
   }
-  for(let i=0;i<10;i++){
-    const points=[];
-    for(let k=0;k<=10;k++){
-      const t=k/10;
-      const a=(i+t)/10*TAU;
-      points.push(new T.Vector3(Math.cos(a)*.334,.249-Math.sin(t*Math.PI)*.068,Math.sin(a)*.334));
-    }
-    part(new T.TubeGeometry(new T.CatmullRomCurve3(points),16,.008,6,false),blue);
-    const a=i/10*TAU;
-    part(new T.SphereGeometry(.012,8,6),silver,Math.cos(a)*.335,.253,Math.sin(a)*.335);
+  const rosette=[];
+  for(let i=0;i<=40;i++){
+    const t=i/40, a=t*TAU*1.7;
+    const radius=.043*(1-t);
+    rosette.push(new T.Vector3(Math.cos(a)*radius,.585+t*.032,Math.sin(a)*radius));
   }
-  for(let i=0;i<3;i++){
-    const a=i/3*TAU;
-    part(new T.SphereGeometry(.036,12,8),berry,Math.cos(a)*.091,.352,Math.sin(a)*.091);
-  }
-  part(new T.CylinderGeometry(.012,.012,.185,12),blue,0,.417);
-  part(new T.CylinderGeometry(.002,.002,.018,6),paint(0x44372e),0,.516);
-  const flame=part(new T.SphereGeometry(1,12,8),flamePaint,0,.549);
+  part(new T.TubeGeometry(new T.CatmullRomCurve3(rosette),48,.010,7,false),icing);
+  part(new T.CylinderGeometry(.012,.012,.143,12),blue,0,.657);
+  part(new T.CylinderGeometry(.002,.002,.018,6),paint(0x44372e),0,.737);
+  const flame=part(new T.SphereGeometry(1,12,8),flamePaint,0,.769);
   flame.scale.set(.016,.038,.016);
   return {
     update(time,cycle){
