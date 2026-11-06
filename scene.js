@@ -114,6 +114,7 @@ void main(){
 const disk=new T.Mesh(new T.CylinderGeometry(R,R,.20,160),new T.MeshStandardMaterial({color:0x080b0d,metalness:.5,roughness:.48}));disk.position.y=-.13;world.add(disk);
 const surfaceGeo=new T.PlaneGeometry(10,10,140,140);surfaceGeo.rotateX(-Math.PI/2);const surface=new T.Mesh(surfaceGeo,diskMat);surface.position.y=-.021;world.add(surface);
 // A transparent inscription follows the same snow surface as the dial.
+let birthdayWordFraction=.5;
 function createGreetingTexture(text,birthday=false){
   const canvas=document.createElement('canvas');
   canvas.width=2048;canvas.height=384;
@@ -135,6 +136,8 @@ function createGreetingTexture(text,birthday=false){
     context.textBaseline='alphabetic';
     const bounds=context.measureText(text);
     const stretch=1900/(bounds.actualBoundingBoxLeft+bounds.actualBoundingBoxRight);
+    birthdayWordFraction=(74+(bounds.actualBoundingBoxLeft+
+      context.measureText('Happy ').width+context.measureText('Birthday').width/2)*stretch)/2048;
     context.translate(74+bounds.actualBoundingBoxLeft*stretch,
       192+(bounds.actualBoundingBoxAscent-bounds.actualBoundingBoxDescent)/2);
     context.scale(stretch,1);
@@ -195,6 +198,82 @@ const greeting=new T.Mesh(greetingGeometry,new T.ShaderMaterial({
 }));
 greeting.name='Seasonal lettering on the snow';
 world.add(greeting);
+function createBirthdayCake(angle){
+  const cake=new T.Group();
+  cake.name='Selin birthday cake';
+  cake.position.set(Math.cos(angle)*3.30,.064,Math.sin(angle)*3.30);
+  cake.visible=false;
+  world.add(cake);
+  const paints=[];
+  function paint(color,extra={}){
+    const material=new T.MeshStandardMaterial({
+      color,roughness:.83,alphaHash:true,transparent:false,...extra,
+    });
+    paints.push(material);
+    return material;
+  }
+  const cream=paint(0xffefd9);
+  const icing=paint(0xfff8eb);
+  const blue=paint(0x749cc9);
+  const berry=paint(0x34588b,{roughness:.52});
+  const silver=paint(0xd9e4ec,{metalness:.32,roughness:.44});
+  const flamePaint=paint(0xffcc70,{emissive:0xffb74d,emissiveIntensity:1.2});
+  function part(geometry,material,x=0,y=0,z=0){
+    const mesh=new T.Mesh(geometry,material);
+    mesh.position.set(x,y,z);
+    cake.add(mesh);
+    return mesh;
+  }
+  part(new T.CylinderGeometry(.396,.378,.025,64),icing,0,.013);
+  const profile=[
+    [0,.026],[.300,.026],[.326,.040],[.332,.066],[.330,.274],
+    [.325,.298],[.306,.311],[0,.311],
+  ].map(([radius,height])=>new T.Vector2(radius,height));
+  part(new T.LatheGeometry(profile,64),cream);
+  part(new T.CylinderGeometry(.324,.328,.023,64),icing,0,.309);
+  const shell=new T.SphereGeometry(1,10,6);
+  for(let i=0;i<28;i++){
+    const a=i/28*TAU;
+    for(const y of [.052,.326]){
+      const dollop=part(shell,icing,Math.cos(a)*.312,y,Math.sin(a)*.312);
+      dollop.scale.set(.030,.018,.025);
+      dollop.rotation.y=-a;
+    }
+  }
+  for(let i=0;i<10;i++){
+    const points=[];
+    for(let k=0;k<=10;k++){
+      const t=k/10;
+      const a=(i+t)/10*TAU;
+      points.push(new T.Vector3(Math.cos(a)*.334,.249-Math.sin(t*Math.PI)*.068,Math.sin(a)*.334));
+    }
+    part(new T.TubeGeometry(new T.CatmullRomCurve3(points),16,.008,6,false),blue);
+    const a=i/10*TAU;
+    part(new T.SphereGeometry(.012,8,6),silver,Math.cos(a)*.335,.253,Math.sin(a)*.335);
+  }
+  for(let i=0;i<3;i++){
+    const a=i/3*TAU;
+    part(new T.SphereGeometry(.036,12,8),berry,Math.cos(a)*.091,.352,Math.sin(a)*.091);
+  }
+  part(new T.CylinderGeometry(.012,.012,.185,12),blue,0,.417);
+  part(new T.CylinderGeometry(.002,.002,.018,6),paint(0x44372e),0,.516);
+  const flame=part(new T.SphereGeometry(1,12,8),flamePaint,0,.549);
+  flame.scale.set(.016,.038,.016);
+  return {
+    update(time,cycle){
+      const local=T.MathUtils.euclideanModulo(cycle-T.MathUtils.euclideanModulo(angle/TAU,1),4);
+      const opacity=birthdayWinterFinished ? 0
+        : T.MathUtils.smoothstep(local,3,3.045)*(1-T.MathUtils.smoothstep(local,3.98,4));
+      cake.visible=opacity>.001;
+      for(const material of paints)material.opacity=opacity;
+      if(cake.visible){
+        flame.scale.y=.038*(1+Math.sin(time*5.3)*.07);
+        flamePaint.emissiveIntensity=1.2+Math.sin(time*4.7)*.10;
+      }
+    },
+  };
+}
+const birthdayCake=createBirthdayCake(-1.48+birthdayWordFraction*1.45);
 function ring(radius,tube,color,y){const m=new T.Mesh(new T.TorusGeometry(radius,tube,8,160),new T.MeshStandardMaterial({color,metalness:.7,roughness:.35}));m.rotation.x=Math.PI/2;m.position.y=y;world.add(m);return m;}
 ring(5,.025,0x252b27,-.03);ring(4.99,.012,0x8f9272,-.012);
 const marks=new T.InstancedMesh(new T.BoxGeometry(.018,.034,.085),new T.MeshStandardMaterial({color:0xc8c9b4,emissive:0x3a3b30}),100);
@@ -821,6 +900,7 @@ function renderFrame(time,seasonCycle,openingAngle=0){
       greeting.material.uniforms.uLetters.value=christmasTexture;
     }
   }
+  birthdayCake.update(time,seasonCycle);
   updateNuzzle(springStill ? 5.22 : time);
   updateWinterScarves(time,seasonCycle);
   const benchSeason=T.MathUtils.euclideanModulo(seasonCycle-benchAngle,4);
