@@ -163,6 +163,11 @@ export function createMeadowGarden(world, random, windTime, snowman, seasonCycle
       color,roughness:.82,transparent:true,
     }));
     const ribbon=new T.MeshStandardMaterial({color:0xdcb77b,roughness:.82,transparent:true});
+    for(const paint of [...papers,ribbon]){
+      paint.transparent=false;
+      paint.alphaHash=true;
+      paint.depthWrite=true;
+    }
     const part=(parent,geometry,paint,x,y,z,width,height,depth)=>{
       const mesh=new T.Mesh(geometry,paint);
       mesh.position.set(x,y,z);
@@ -247,7 +252,6 @@ export function createMeadowGarden(world, random, windTime, snowman, seasonCycle
       if(!cluster.visible)continue;
       for(const paint of paints){
         paint.opacity=opacity;
-        paint.depthWrite=opacity>.95;
       }
     }
     for(const {patch,angle,stemPaint,grainPaint} of wheatPatches){

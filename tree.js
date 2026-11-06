@@ -336,7 +336,7 @@ export function createSeasonalTree(world, random) {
     ball(candyRed,0,.060,.107,.009);
   }
   const leafColor = new T.Color(), baseColor = new T.Color();
-  // Each nest fades independently, so shared ribbon and candy materials cannot pop in together.
+  // Stable coverage and depth keep ribbons attached as each nest fades into view.
   for(const ornament of ornamentNests){
     const paints=new Map();
     ornament.nest.traverse(object=>{
@@ -344,8 +344,9 @@ export function createSeasonalTree(world, random) {
       const original=object.material;
       if(!paints.has(original)){
         const paint=original.clone();
-        paint.transparent=true;
-        paint.depthWrite=false;
+        paint.transparent=false;
+        paint.alphaHash=true;
+        paint.depthWrite=true;
         paints.set(original,paint);
       }
       object.material=paints.get(original);
@@ -389,8 +390,6 @@ export function createSeasonalTree(world, random) {
         nest.position.y=restY+.028*(1-reveal);
         for(const paint of paints){
           paint.opacity=reveal;
-          paint.transparent=reveal<.999;
-          paint.depthWrite=reveal>=.999;
         }
       }
 

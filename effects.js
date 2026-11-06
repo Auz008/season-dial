@@ -20,6 +20,11 @@ function createParkedSleigh(world, secondsPerSeason) {
     color:0xffcf82, emissive:0xffad52, emissiveIntensity:1.5, roughness:.38, transparent:true,
   });
   const paints=[lacquer,brass,velvet,emerald,ivory,lanternGlass];
+  for(const paint of paints){
+    paint.transparent=false;
+    paint.alphaHash=true;
+    paint.depthWrite=true;
+  }
   function add(geometry, material, x=0, y=0, z=0) {
     const mesh = new T.Mesh(geometry, material);
     mesh.position.set(x,y,z);
@@ -107,12 +112,11 @@ function createParkedSleigh(world, secondsPerSeason) {
       const departure = winterFlightStart-1/secondsPerSeason;
       // Keep the parked sleigh through the thaw until just before the sky flight.
       const opacity = fixedWinter ? 1
-        : T.MathUtils.smoothstep(sinceWinter,winterArrival,winterArrival+.035)
+        : T.MathUtils.smoothstep(sinceWinter,winterArrival,winterArrival+.075)
           * (1-T.MathUtils.smoothstep(sinceWinter,departure-.025,departure));
       sleigh.visible = opacity>0;
       for(const paint of paints){
         paint.opacity=opacity;
-        paint.depthWrite=opacity>.95;
       }
     },
   };
