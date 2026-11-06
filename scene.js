@@ -114,22 +114,35 @@ void main(){
 const disk=new T.Mesh(new T.CylinderGeometry(R,R,.20,160),new T.MeshStandardMaterial({color:0x080b0d,metalness:.5,roughness:.48}));disk.position.y=-.13;world.add(disk);
 const surfaceGeo=new T.PlaneGeometry(10,10,140,140);surfaceGeo.rotateX(-Math.PI/2);const surface=new T.Mesh(surfaceGeo,diskMat);surface.position.y=-.021;world.add(surface);
 // A transparent inscription follows the same snow surface as the dial.
-function createGreetingTexture(text){
+function createGreetingTexture(text,birthday=false){
   const canvas=document.createElement('canvas');
   canvas.width=2048;canvas.height=384;
   const context=canvas.getContext('2d');
-  context.font='200px "Snell Roundhand", "Apple Chancery", cursive';
+  context.font=birthday
+    ? '200px "Apple Chancery", "Snell Roundhand", cursive'
+    : '200px "Snell Roundhand", "Apple Chancery", cursive';
   context.textAlign='center';
   context.textBaseline='middle';
-  const gold=context.createLinearGradient(0,105,0,280);
-  gold.addColorStop(0,'#c18a10');
-  gold.addColorStop(.32,'#e6b94e');
-  gold.addColorStop(.57,'#d6a321');
-  gold.addColorStop(1,'#a7720b');
-  context.fillStyle=gold;
-  context.translate(1024,192);
-  context.scale(1900/context.measureText(text).width,1);
-  context.strokeStyle='#93630c';
+  const color=context.createLinearGradient(0,105,0,280);
+  color.addColorStop(0,birthday?'#215798':'#c18a10');
+  color.addColorStop(.32,birthday?'#719cc8':'#e6b94e');
+  color.addColorStop(.57,birthday?'#346eb6':'#d6a321');
+  color.addColorStop(1,birthday?'#183f78':'#a7720b');
+  context.fillStyle=color;
+  if(birthday){
+    // Align the visible lettering, including the capital H and trailing flourishes.
+    context.textAlign='left';
+    context.textBaseline='alphabetic';
+    const bounds=context.measureText(text);
+    const stretch=1900/(bounds.actualBoundingBoxLeft+bounds.actualBoundingBoxRight);
+    context.translate(74+bounds.actualBoundingBoxLeft*stretch,
+      192+(bounds.actualBoundingBoxAscent-bounds.actualBoundingBoxDescent)/2);
+    context.scale(stretch,1);
+  }else{
+    context.translate(1024,192);
+    context.scale(1900/context.measureText(text).width,1);
+  }
+  context.strokeStyle=birthday?'#173d70':'#93630c';
   context.lineWidth=1.8;
   context.strokeText(text,0,0);
   context.fillText(text,0,0);
@@ -139,7 +152,7 @@ function createGreetingTexture(text){
   return texture;
 }
 const christmasTexture=createGreetingTexture('Merry Christmas');
-const birthdayTexture=seasonStill ? christmasTexture : createGreetingTexture('Happy Birthday to Selin');
+const birthdayTexture=seasonStill ? christmasTexture : createGreetingTexture('Happy Birthday to Selin',true);
 let birthdayWinterStarted=false;
 let birthdayWinterFinished=seasonStill;
 const greetingGeometry=new T.PlaneGeometry(1,1,128,24);
@@ -180,7 +193,7 @@ const greeting=new T.Mesh(greetingGeometry,new T.ShaderMaterial({
     }
   `,
 }));
-greeting.name='Seasonal golden lettering on the snow';
+greeting.name='Seasonal lettering on the snow';
 world.add(greeting);
 function ring(radius,tube,color,y){const m=new T.Mesh(new T.TorusGeometry(radius,tube,8,160),new T.MeshStandardMaterial({color,metalness:.7,roughness:.35}));m.rotation.x=Math.PI/2;m.position.y=y;world.add(m);return m;}
 ring(5,.025,0x252b27,-.03);ring(4.99,.012,0x8f9272,-.012);
